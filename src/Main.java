@@ -18,17 +18,19 @@ package JavaBitcoin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-import java.awt.*;
-import java.awt.event.*;
 import javax.swing.*;
-import javax.swing.event.*;
 
 /**
  * <p>Main class for the JavaBitcoin peer node</p>
@@ -166,7 +168,7 @@ public class Main {
     private static DatabaseHandler databaseHandler;
 
     /** Message handlers */
-    private static List<MessageHandler> messageHandlers = new ArrayList<>(5);
+    private static MessageHandler messageHandler;
 
     /** Deferred exception text */
     private static String deferredText;
@@ -231,7 +233,7 @@ public class Main {
             // Create the block store.  We will use the 'javadb' database for the production network
             // and the 'jtestdb' database for the test network.
             //
-            blockStore = new BlockStore(dataPath, testNetwork?"jtestdb":"javadb");
+            blockStore = new BlockStorePg(dataPath, testNetwork?"jtestdb":"javadb");
             Parameters.blockStore = blockStore;
             //
             // Create the block chain
@@ -290,13 +292,10 @@ public class Main {
             thread.start();
             threads.add(thread);
 
-            for (int i=0; i<3; i++) {
-                MessageHandler handler = new MessageHandler();
-                messageHandlers.add(handler);
-                thread = new Thread(threadGroup, handler);
-                thread.start();
-                threads.add(thread);
-            }
+            messageHandler = new MessageHandler();
+            thread = new Thread(threadGroup, messageHandler);
+            thread.start();
+            threads.add(thread);
             //
             // Start the GUI
             //
@@ -361,8 +360,7 @@ public class Main {
         //
         Parameters.networkListener.shutdown();
         databaseHandler.shutdown();
-        for (MessageHandler handler : messageHandlers)
-            handler.shutdown();
+        messageHandler.shutdown();
         //
         // Wait for threads to terminate
         //
@@ -464,7 +462,7 @@ public class Main {
                         // loading blocks if we get 5 consecutive blocks being held (something
                         // is wrong and needs to be investigated)
                         //
-                        if (blockStore.isNewBlock(block)) {
+                        if (blockStore.isNewBlock(block.getHash())) {
                             if (blockChain.storeBlock(block) == null) {
                               log.info(String.format("Current block was not added to the block chain\n  %s",
                                                      block.getHashAsString()));

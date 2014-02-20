@@ -107,7 +107,7 @@ public class DatabaseHandler implements Runnable {
             //
             // Process the new block
             //
-            if (Parameters.blockStore.isNewBlock(block)) {
+            if (Parameters.blockStore.isNewBlock(block.getHash())) {
                 //
                 // Store the block in our database
                 //
