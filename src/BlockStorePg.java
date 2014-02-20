@@ -732,7 +732,7 @@ public class BlockStorePg extends BlockStore {
     /**
      * Stores a block in the database
      *
-     * @param       block                   Block to be stored
+     * @param       storedBlock             Block to be stored
      * @throws      BlockStoreException     Unable to store the block
      */
     @Override

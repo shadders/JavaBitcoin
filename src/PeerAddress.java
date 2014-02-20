@@ -182,7 +182,7 @@ public class PeerAddress {
     /**
      * Set the peer connection type
      *
-     * @param       TRUE if this is an outbound connection
+     * @param       isOutbound          TRUE if this is an outbound connection
      */
     public void setOutbound(boolean isOutbound) {
         outboundConnection = isOutbound;
@@ -200,7 +200,7 @@ public class PeerAddress {
     /**
      * Set the address type
      *
-     * @param       TRUE if this is a static address
+     * @param       isStatic            TRUE if this is a static address
      */
     public void setStatic(boolean isStatic) {
         staticAddress = isStatic;

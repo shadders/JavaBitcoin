@@ -58,7 +58,7 @@ public class PeerRequest {
      *
      * @param       hash            The transaction or block hash
      * @param       type            The inventory type (INV_BLOCK or INV_TX)
-     * @param       peer            Peer that sent the 'inv' message
+     * @param       origin          Peer that sent the 'inv' message
      */
     public PeerRequest(Sha256Hash hash, int type, Peer origin) {
         this.hash = hash;

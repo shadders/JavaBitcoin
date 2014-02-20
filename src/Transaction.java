@@ -376,8 +376,8 @@ public class Transaction {
      * @param       sigHashType         Signature hash type
      * @param       subScriptBytes      Replacement script for the current input
      * @param       outStream           The output stream
-     * @throw       IOException
-     * @throw       ScriptException
+     * @throws      IOException
+     * @throws      ScriptException
      */
     public void serializeForSignature(int index, int sigHashType, byte[] subScriptBytes, OutputStream outStream)
                                         throws IOException, ScriptException {

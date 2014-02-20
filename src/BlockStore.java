@@ -313,7 +313,7 @@ public abstract class BlockStore {
     /**
      * Stores a block in the database
      *
-     * @param       block                   Block to be stored
+     * @param       storedBlock             Block to be stored
      * @throws      BlockStoreException     Unable to store the block
      */
     public abstract void storeBlock(StoredBlock storedBlock) throws BlockStoreException;

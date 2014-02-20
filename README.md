@@ -13,4 +13,42 @@ The PostgreSQL (9.3 or later) relational database is used.  I tried H2, Firebird
 
 Database performance isn't an issue during normal operation, but it is significant when loading the block chain for the first time.  This is primarily caused by the insert/update/delete cycle for the transaction outputs table.  As of February 2014, even with pruned outputs, the transaction outputs table has close to 10 million rows (one row per output).  Even consolidating this to one row per transaction doesn't really make much difference in performance.  One solution is to provide a SQL command file to recreate the database for a given point in time, although this requires some trust but no more than is required when downloading a bootstrap block chain.
 
-There are no special build instructions.  I use the Netbeans IDE but any build environment with the Java compiler available should work.  The documentation is generated from the source code using javadoc.
+Build
+=====
+
+I use the Netbeans IDE but any build environment with the Java compiler available should work.  The documentation is generated from the source code using javadoc.
+
+Here are the steps for a manual build:
+
+  - Create 'doc', 'lib' and 'classes' directories under the JavaBitcoin directory (the directory containing 'src')
+  - Download Java SE Development Kit 7: http://www.oracle.com/technetwork/java/javase/downloads/index.html
+  - Download BouncyCastle 1.50 or later to 'lib': https://www.bouncycastle.org/
+  - Download Simple Logging Facade 1.7.5 or later to 'lib': http://www.slf4j.org/
+  - Download PostgreSQL 9.3 or later to 'lib': http://www.postgresql.org/
+  - Change to the JavaBitcoin directory (with subdirectories 'doc', 'lib', 'classes' and 'src')
+  - The manifest.mf, build-list and doc-list files specify the classpath for the dependent jar files.  Update the list as required to match what you downloaded.
+  - Build the classes: javac @build-list
+  - Build the jar: jar cmf manifest.mf JavaBitcoin.jar -C classes JavaBitcoin
+  - Build the documentation: javadoc @doc-list
+  
+Install
+=======
+
+After installing PostgreSQL, you need to create a role and a database for use by JavaBitcoin.
+
+  - CREATE ROLE javabtc LOGIN CREATEDB REPLICATION INHERIT PASSWORD "btcnode"
+  - CREATE DATABASE javadb WITH ENCODING='UTF8' OWNER=javabtc LC_COLLATE='English_UnitedStates.1252' LC_CTYPE='English_UnitedStates.1252' CONNECTION LIMIT=-1
+
+The first time you start JavaBitcoin, it will create and initialize the tables in the database.  You will also need to resize the GUI to the desired size.  Stop and restart JavaBitcoin and the tables should be resized to match the new window dimensions.
+
+If you have Bitcoin-Qt already installed, you can use its block file to build the database as follows:
+
+  java -Xmx512m -Dbitcoin.verify.blocks=0 -jar JavaBitcoin.jar LOAD PROD "%Bitcoin%"
+  
+where %Bitcoin% specifies the Bitcoin-Qt application directory (for example, /Users/name/AppData/Roaming/Bitcoin).
+
+Otherwise, start JavaBitcoin and it will download the block chain from the peer network:
+
+  java -Xmx512m -jar JavaBitcoin.jar PROD
+  
+See the documentation for JavaBitcoin.Main for additional start options.

@@ -405,7 +405,7 @@ public class Peer {
     /**
      * Sets the incomplete response flag
      *
-     * @param       relay               TRUE if response was incomplete
+     * @param       incomplete           TRUE if response was incomplete
      */
     public void setIncomplete(boolean incomplete) {
         this.incompleteResponse = incomplete;

@@ -128,7 +128,7 @@ public class Script {
      * For canonical scripts, each push-data operation must use the shortest opcode possible.
      * Numeric values between 0 and 16 must use OP_n opcodes.
      *
-     * @param       script          Script bytes
+     * @param       scriptBytes     Script bytes
      * @param       canonical       TRUE for canonical checking
      * @return                      TRUE if only canonical push-data operations were found
      * @throws      EOFException    Script is too short
@@ -187,9 +187,9 @@ public class Script {
      * OP_CHECKMULTISIG and OP_CHECKMULTISIGVERIFY count as n signature operations where
      * n is the number of pubkeys preceding the opcode.
      *
-     * @param       script          Script bytes
-     * @return      TRUE if the number of signature operations is acceptable
-     * @throws      EOFException    Script is too short
+     * @param       scriptBytes         Script bytes
+     * @return                          TRUE if the number of signature operations is acceptable
+     * @throws      EOFException        Script is too short
      */
     public static boolean countSigOps(byte[] scriptBytes) throws EOFException {
         int sigCount = 0;

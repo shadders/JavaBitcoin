@@ -104,10 +104,11 @@ public class BlockChain {
      * The block must be in the block store and must be on hold if this
      * is a new block that hasn't been verified yet.
      *
-     * @param       block           The new or updated stored block
-     * @return      List of blocks that have been added to the chain.  The first element in the list
-     *              is the junction block and will not contain any block data.  The list will
-     *              be null if no blocks have been added to the chain.
+     * @param       storedBlock         The new or updated stored block
+     * @return                          List of blocks that have been added to the chain.
+     *                                  The first element in the list is the junction block
+     *                                  and will not contain any block data.  The list will
+     *                                  be null if no blocks have been added to the chain.
      * @throws      BlockStoreException Unable to update the block chain in the database
      */
     public List<StoredBlock> updateBlockChain(StoredBlock storedBlock) throws BlockStoreException {
