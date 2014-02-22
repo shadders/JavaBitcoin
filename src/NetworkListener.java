@@ -934,6 +934,7 @@ public class NetworkListener implements Runnable {
             //
             if (peer.getVersionCount() == 2) {
                 peer.incVersionCount();
+                Parameters.networkChainHeight = Math.max(Parameters.networkChainHeight, peer.getHeight());
                 log.info(String.format("Connection handshake completed with %s", address.toString()));
                 //
                 // Send a 'getaddr' message to exchange peer address lists.
@@ -968,9 +969,7 @@ public class NetworkListener implements Runnable {
                 // one yet
                 //
                 if (!getBlocksSent && (peer.getServices()&Parameters.NODE_NETWORK) != 0) {
-                    int chainHeight = Parameters.blockStore.getChainHeight();
-                    if (peer.getHeight() > chainHeight) {
-                        Parameters.networkChainHeight = peer.getHeight();
+                    if (peer.getHeight() > Parameters.blockStore.getChainHeight()) {
                         Message msg1 = GetBlocksMessage.buildGetBlocksMessage(peer);
                         synchronized(Parameters.lock) {
                             peer.getOutputList().add(msg1);
