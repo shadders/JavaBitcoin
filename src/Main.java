@@ -106,6 +106,12 @@ import javax.swing.*;
  * is maxconnections-4.  The default for maxconnections is 32.</td></tr>
  * <tr><td>port=n</td>
  * <td>Specifies the port for incoming connections.  The default port 8333</td></tr>
+ * <tr><td>dbuser=userid</td>
+ * <td>Specifies the SQL database user</td></tr>
+ * <tr><td>dbpw=password</td>
+ * <td>Specifies the SQL database password</td></tr>
+ * <tr><td>dbport=n</td>
+ * <td>Specifies the SQL database TCP/IP port</td></tr>
  * </table>
  */
 public class Main {
@@ -115,6 +121,15 @@ public class Main {
 
     /** Default maximum connections */
     private static final String MAX_CONNECTIONS = "32";
+
+    /** Default database user */
+    private static final String DB_USER = "javabtc";
+
+    /** Default database password */
+    private static final String DB_PASSWORD = "btcnode";
+
+    /** Default database port */
+    private static final String DB_PORT = "5432";
 
     /** Application properties */
     public static Properties properties;
@@ -227,13 +242,19 @@ public class Main {
             } else {
                 properties.setProperty("maxconnections", MAX_CONNECTIONS);
                 properties.setProperty("port", String.valueOf(Parameters.DEFAULT_PORT));
+                properties.setProperty("dbuser", DB_USER);
+                properties.setProperty("dbpw", DB_PASSWORD);
+                properties.setProperty("dbport", DB_PORT);
                 saveProperties();
             }
             //
             // Create the block store.  We will use the 'javadb' database for the production network
             // and the 'jtestdb' database for the test network.
             //
-            blockStore = new BlockStorePg(dataPath, testNetwork?"jtestdb":"javadb");
+            blockStore = new BlockStorePg(dataPath, testNetwork?"jtestdb":"javadb",
+                            properties.getProperty("dbuser", DB_USER),
+                            properties.getProperty("dbpw", DB_PASSWORD),
+                            Integer.parseInt(properties.getProperty("dbport", DB_PORT)));
             Parameters.blockStore = blockStore;
             //
             // Create the block chain

@@ -373,6 +373,8 @@ public abstract class BlockStore {
      * @throws      BlockStoreException Unable to read the block data
      */
     protected Block getBlock(int fileNumber, int fileOffset) throws BlockStoreException {
+        if (fileNumber < 0)
+            return null;
         Block block = null;
         File blockFile = new File(String.format("%s\\Blocks\\blk%05d.dat", dataPath, fileNumber));
         try {

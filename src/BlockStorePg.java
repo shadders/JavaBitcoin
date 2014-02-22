@@ -162,16 +162,20 @@ public class BlockStorePg extends BlockStore {
      *
      * @param       dataPath            Application data path
      * @param       dbName              Database name
+     * @param       user                Database user
+     * @param       password            Database password
+     * @param       port                Database server port
      * @throws      BlockStoreException Unable to initialize the database
      */
-    public BlockStorePg(String dataPath, String dbName) throws BlockStoreException {
+    public BlockStorePg(String dataPath, String dbName, String user, String password, int port)
+                                        throws BlockStoreException {
         super(dataPath);
         //
         // We will use the PostgreSQL database
         //
-        connectionURL = "jdbc:postgresql://127.0.0.1:8335/"+dbName;
-        connectionUser = "javabtc";
-        connectionPassword = "btcnode";
+        connectionURL = String.format("jdbc:postgresql://127.0.0.1:%d/%s", port, dbName);
+        connectionUser = user;
+        connectionPassword = password;
         //
         // We will use a separate database connection for each thread
         //
