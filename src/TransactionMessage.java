@@ -15,9 +15,6 @@
  */
 package JavaBitcoin;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
@@ -48,9 +45,6 @@ import java.util.List;
  */
 public class TransactionMessage {
 
-    /** Logger instance */
-    private static final Logger log = LoggerFactory.getLogger(TransactionMessage.class);
-
     /**
      * Processes a 'tx' message
      *
@@ -62,7 +56,6 @@ public class TransactionMessage {
      */
     public static void processTransactionMessage(Message msg, ByteArrayInputStream inStream)
                                     throws EOFException, IOException, VerificationException {
-        boolean duplicateTx = false;
         //
         // Get the transaction
         //
@@ -86,30 +79,118 @@ public class TransactionMessage {
             }
         }
         //
-        // Ignore the transaction if we have already seen it
+        // Ignore the transaction if we have already seen it.  Otherwise, add it to
+        // the recent transaction list
         //
+        boolean duplicateTx = false;
         synchronized(Parameters.lock) {
-            if (Parameters.recentTxMap.get(txHash) != null || Parameters.txMap.get(txHash) != null)
+            if (Parameters.recentTxMap.get(txHash) != null) {
                 duplicateTx = true;
+            } else {
+                Parameters.recentTxList.add(txHash);
+                Parameters.recentTxMap.put(txHash, txHash);
+            }
         }
-        if (duplicateTx) {
-            log.info(String.format("Discarding duplicate transaction\n  %s", txHash));
+        if (duplicateTx)
             return;
-        }
         //
         // Verify the transaction
         //
         tx.verify(true);
-       //
+        //
         // Coinbase transaction cannot be relayed
         //
         if (tx.isCoinBase())
             throw new VerificationException("Coinbase transaction cannot be relayed",
-                                            Parameters.REJECT_INVALID, tx.getHash());
+                                            Parameters.REJECT_INVALID, txHash);
         //
-        // Check for non-standard transactions that won't be relayed
+        // Validate the transaction
         //
+        if (!validateTx(tx))
+            return;
+        //
+        // Broadcast the transaction to our peers
+        //
+        broadcastTx(tx);
+        //
+        // Process orphan transactions that were waiting on this transaction
+        //
+        List<StoredTransaction> orphanTxList;
+        synchronized(Parameters.lock) {
+            orphanTxList = Parameters.orphanTxMap.remove(txHash);
+            if (orphanTxList != null) {
+                for (StoredTransaction orphanStoredTx : orphanTxList)
+                    Parameters.orphanTxList.remove(orphanStoredTx);
+            }
+        }
+        if (orphanTxList != null) {
+            for (StoredTransaction orphanStoredTx : orphanTxList) {
+                Transaction orphanTx = orphanStoredTx.getTransaction();
+                if (validateTx(orphanTx))
+                    broadcastTx(orphanTx);
+            }
+        }
+        //
+        // Purge transactions from the memory pool after 15 minutes.  We will limit the
+        // transaction lists to 5000 entries each.
+        //
+        synchronized(Parameters.lock) {
+            long oldestTime = System.currentTimeMillis()/1000 - (15*60);
+            // Clean up the transaction pool
+            while (!Parameters.txPool.isEmpty()) {
+                StoredTransaction poolTx = Parameters.txPool.get(0);
+                if (poolTx.getTimeStamp()>=oldestTime && Parameters.txPool.size()<=5000)
+                    break;
+                Parameters.txPool.remove(0);
+                Parameters.txMap.remove(poolTx.getHash());
+            }
+            // Clean up the recent transaction list
+            while (Parameters.recentTxList.size() > 5000) {
+                Sha256Hash poolHash = Parameters.recentTxList.remove(0);
+                Parameters.recentTxMap.remove(poolHash);
+            }
+            // Clean up the spent outputs list
+            while (Parameters.spentOutputsList.size() > 5000) {
+                OutPoint outPoint = Parameters.spentOutputsList.remove(0);
+                Parameters.spentOutputsMap.remove(outPoint);
+            }
+            // Clean up the orphan transactions list
+            while (Parameters.orphanTxList.size() > 1000) {
+                StoredTransaction poolTx = Parameters.orphanTxList.remove(0);
+                Parameters.orphanTxMap.remove(poolTx.getParent());
+            }
+        }
+    }
+
+    /**
+     * Retry an orphan transaction
+     *
+     * @param       tx                      Transaction
+     */
+    public static void retryOrphanTransaction(Transaction tx) {
+        try {
+            if (validateTx(tx))
+                broadcastTx(tx);
+        } catch (EOFException | VerificationException exc) {
+           // Ignore the transaction since it is no longer valid
+        }
+    }
+
+    /**
+     * Validates the transaction
+     *
+     * @param       tx                      Transaction
+     * @return                              TRUE if the transaction is valid
+     * @throws      EOFException            End-of-data processing script
+     * @throws      VerificationException   Transaction validation failed
+     */
+    private static boolean validateTx(Transaction tx) throws EOFException, VerificationException {
+        Sha256Hash txHash = tx.getHash();
+        BigInteger totalInput = BigInteger.ZERO;
         BigInteger totalOutput = BigInteger.ZERO;
+        //
+        // Validate the transaction outputs
+        //
         List<TransactionOutput> outputs = tx.getOutputs();
         for (TransactionOutput output : outputs) {
             // Dust transactions are not relayed
@@ -127,7 +208,7 @@ public class TransactionMessage {
                 throw new VerificationException("Non-standard payment types are not relayed",
                                                 Parameters.REJECT_NONSTANDARD, txHash);
             }
-            // Add the output value to the total output value
+            // Add the output value to the total output value for the transaction
             totalOutput = totalOutput.add(output.getValue());
         }
         //
@@ -135,8 +216,9 @@ public class TransactionMessage {
         //
         List<OutPoint> spentOutputs = new LinkedList<>();
         List<TransactionInput> inputs = tx.getInputs();
-        BigInteger totalInput = BigInteger.ZERO;
         boolean orphanTx = false;
+        boolean duplicateTx = false;
+        Sha256Hash orphanHash = null;
         for (TransactionInput input : inputs) {
             // Script size must not exceed 500 bytes
             if (input.getScriptBytes().length > 500)
@@ -177,6 +259,7 @@ public class TransactionMessage {
                         output = Parameters.blockStore.getTxOutput(outPoint);
                         if (output == null) {
                             orphanTx = true;
+                            orphanHash = outPoint.getHash();
                         } else if (output.isSpent()) {
                             outputSpent = true;
                         } else {
@@ -184,6 +267,7 @@ public class TransactionMessage {
                         }
                     } catch (BlockStoreException exc) {
                         orphanTx = true;
+                        orphanHash = outPoint.getHash();
                     }
                 }
             } else if (!spendHash.equals(txHash)) {
@@ -196,28 +280,26 @@ public class TransactionMessage {
                 break;
             // Error if the output has been spent
             if (outputSpent)
-                throw new VerificationException(String.format("Input already spent by %s", spendHash.toString()),
-                                                Parameters.REJECT_DUPLICATE, txHash);
+                throw new VerificationException("Input already spent", Parameters.REJECT_DUPLICATE, txHash);
             // Check for canonical signatures and public keys
             int paymentType = Script.getPaymentType(output.getScriptBytes());
             List<byte[]> dataList = Script.getData(input.getScriptBytes());
             int canonicalType = 0;
             switch (paymentType) {
                 case Script.PAY_TO_PUBKEY:
-                    if (dataList.size() >= 1) {
-                        if (!ECKey.isSignatureCanonical(dataList.get(0)))
-                            canonicalType = 1;
-                    }
+                    // First data element is signature
+                    if (dataList.isEmpty() || !ECKey.isSignatureCanonical(dataList.get(0)))
+                        canonicalType = 1;
                     break;
                 case Script.PAY_TO_PUBKEY_HASH:
-                    if (dataList.size() >= 2) {
-                        if (!ECKey.isSignatureCanonical(dataList.get(0)))
-                            canonicalType = 1;
-                        else if (!ECKey.isPubKeyCanonical(dataList.get(1)))
-                            canonicalType = 2;
-                    }
+                    // First data element is signature, second data element is public key
+                    if (dataList.isEmpty() || !ECKey.isSignatureCanonical(dataList.get(0)))
+                        canonicalType = 1;
+                    else if (dataList.size() < 2 || !ECKey.isPubKeyCanonical(dataList.get(1)))
+                        canonicalType = 2;
                     break;
                 case Script.PAY_TO_MULTISIG:
+                    // All data elements are public keys
                     for (byte[] sigBytes : dataList) {
                         if (!ECKey.isSignatureCanonical(sigBytes)) {
                             canonicalType = 1;
@@ -235,20 +317,31 @@ public class TransactionMessage {
             spentOutputs.add(outPoint);
         }
         //
-        // Ignore a duplicate or orphan transaction
+        // Ignore a duplicate transaction (race condition among message handler threads)
         //
         if (duplicateTx)
-            return;
+            return false;
+        //
+        // Save an orphan transaction for later
+        //
         if (orphanTx) {
+            StoredTransaction storedTx = new StoredTransaction(tx);
+            storedTx.setParent(orphanHash);
             synchronized(Parameters.lock) {
-                Parameters.recentTxList.add(txHash);
-                Parameters.recentTxMap.put(txHash, txHash);
+                Parameters.orphanTxList.add(storedTx);
+                List<StoredTransaction> orphanList = Parameters.orphanTxMap.get(orphanHash);
+                if (orphanList == null) {
+                    orphanList = new LinkedList<>();
+                    orphanList.add(storedTx);
+                    Parameters.orphanTxMap.put(orphanHash, orphanList);
+                } else {
+                    orphanList.add(storedTx);
+                }
             }
-            log.info(String.format("Orphan transaction discarded\n  %s", txHash.toString()));
-            return;
+            return false;
         }
         //
-        // Check for insufficient transaction fee.  We will allow up to 9999 bytes with no fee.
+        // Check for insufficient transaction fee.  We will allow up to 50000 bytes with no fee.
         // Anything larger must pay the minimum fee for each 1000 bytes of transaction data.
         //
         BigInteger totalFee = totalInput.subtract(totalOutput);
@@ -257,7 +350,7 @@ public class TransactionMessage {
                                             Parameters.REJECT_INVALID, txHash);
         int txLength = tx.getBytes().length;
         int feeMultiplier = txLength/1000;
-        if (feeMultiplier >= 10) {
+        if (feeMultiplier >= 50) {
             BigInteger minFee = Parameters.MIN_TX_RELAY_FEE.multiply(BigInteger.valueOf(feeMultiplier+1));
             if (totalFee.compareTo(minFee) < 0)
                 throw new VerificationException("Insufficient transaction fee",
@@ -266,7 +359,7 @@ public class TransactionMessage {
         //
         // Store the transaction in the memory pool (maximum size we will store is 100KB)
         //
-        if (length <= 100*1024) {
+        if (txLength <= 100*1024) {
             StoredTransaction storedTx = new StoredTransaction(tx);
             synchronized(Parameters.lock) {
                 if (Parameters.txMap.get(txHash) == null) {
@@ -277,83 +370,55 @@ public class TransactionMessage {
                         Parameters.spentOutputsList.add(outPoint);
                         Parameters.spentOutputsMap.put(outPoint, txHash);
                     }
-                } else {
-                    txHash = null;
-                }
-            }
-        } else {
-            txHash = null;
-        }
-        //
-        // Notify our peers that we have a new transaction
-        //
-        if (txHash != null) {
-            //
-            // Send an 'inv' message to the broadcast peers
-            //
-            List<Sha256Hash> txList = new ArrayList<>(1);
-            txList.add(txHash);
-            Message invMsg = InventoryMessage.buildInventoryMessage(null, Parameters.INV_TX, txList);
-            Parameters.networkListener.broadcastMessage(invMsg);
-            //
-            // Copy the current list of Bloom filters
-            //
-            List<BloomFilter> filters = null;
-            synchronized(Parameters.lock) {
-                filters = new ArrayList<>(Parameters.bloomFilters.size());
-                filters.addAll(Parameters.bloomFilters);
-            }
-            //
-            // Check each filter for a match
-            //
-            for (BloomFilter filter : filters) {
-                Peer peer = filter.getPeer();
-                //
-                // Remove the filter if the peer is no longer connected
-                //
-                if (!peer.isConnected()) {
-                    synchronized(Parameters.lock) {
-                        Parameters.bloomFilters.remove(filter);
-                    }
-                    continue;
-                }
-                //
-                // Check the transaction against the filter and send an 'inv' message if it is a match
-                //
-                if (filter.checkTransaction(tx)) {
-                    invMsg = InventoryMessage.buildInventoryMessage(peer, Parameters.INV_TX, txList);
-                    Parameters.networkListener.sendMessage(invMsg);
                 }
             }
         }
+        return true;
+    }
+
+    /**
+     * Broadcasts the transaction
+     *
+     * @param       tx                  Transaction
+     * @throws      EOFException        End-of-data processing script
+     */
+    private static void broadcastTx(Transaction tx) throws EOFException {
+        Sha256Hash txHash = tx.getHash();
         //
-        // Purge transactions from the memory pool after 15 minutes.  We will limit the
-        // transaction lists to 5000 entries each.
+        // Send an 'inv' message to the broadcast peers
         //
+        List<Sha256Hash> txList = new ArrayList<>(1);
+        txList.add(txHash);
+        Message invMsg = InventoryMessage.buildInventoryMessage(null, Parameters.INV_TX, txList);
+        Parameters.networkListener.broadcastMessage(invMsg);
+        //
+        // Copy the current list of Bloom filters
+        //
+        List<BloomFilter> filters = null;
         synchronized(Parameters.lock) {
-            long oldestTime = System.currentTimeMillis()/1000 - (15*60);
-            // Clean up the transaction pool
-            while (!Parameters.txPool.isEmpty()) {
-                StoredTransaction poolTx = Parameters.txPool.get(0);
-                if (poolTx.getTimeStamp()>=oldestTime && Parameters.txPool.size()<=5000)
-                    break;
-                Sha256Hash poolHash = poolTx.getHash();
-                Parameters.txPool.remove(0);
-                Parameters.txMap.remove(poolHash);
-                if (Parameters.recentTxMap.get(poolHash) == null) {
-                    Parameters.recentTxList.add(poolHash);
-                    Parameters.recentTxMap.put(poolHash, poolHash);
+            filters = new ArrayList<>(Parameters.bloomFilters.size());
+            filters.addAll(Parameters.bloomFilters);
+        }
+        //
+        // Check each filter for a match
+        //
+        for (BloomFilter filter : filters) {
+            Peer peer = filter.getPeer();
+            //
+            // Remove the filter if the peer is no longer connected
+            //
+            if (!peer.isConnected()) {
+                synchronized(Parameters.lock) {
+                    Parameters.bloomFilters.remove(filter);
                 }
+                continue;
             }
-            // Clean up the recent transaction list
-            while (Parameters.recentTxList.size() > 5000) {
-                Sha256Hash poolHash = Parameters.recentTxList.remove(0);
-                Parameters.recentTxMap.remove(poolHash);
-            }
-            // Clean up the spent outputs list
-            while (Parameters.spentOutputsList.size() > 5000) {
-                OutPoint outPoint = Parameters.spentOutputsList.remove(0);
-                Parameters.spentOutputsMap.remove(outPoint);
+            //
+            // Check the transaction against the filter and send an 'inv' message if it is a match
+            //
+            if (filter.checkTransaction(tx)) {
+                invMsg = InventoryMessage.buildInventoryMessage(peer, Parameters.INV_TX, txList);
+                Parameters.networkListener.sendMessage(invMsg);
             }
         }
     }

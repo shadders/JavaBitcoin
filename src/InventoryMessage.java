@@ -108,7 +108,7 @@ public class InventoryMessage {
         for (int i=0; i<invCount; i++) {
             int count = inStream.read(bytes);
             if (count < 36)
-                throw new EOFException("'inv' message is too short");
+                throw new EOFException("End-of-data processing 'inv' message");
             int type = (int)Utils.readUint32LE(bytes, 0);
             Sha256Hash hash = new Sha256Hash(Utils.reverseBytes(bytes, 4, 32));
             PeerRequest request = new PeerRequest(hash, type, peer);
@@ -128,12 +128,12 @@ public class InventoryMessage {
                 //
                 // Skip the transaction if we have already seen it
                 //
-                boolean isNewTx = false;
+                boolean newTx = false;
                 synchronized(Parameters.lock) {
-                    if (Parameters.txMap.get(hash) == null && Parameters.recentTxMap.get(hash) == null)
-                        isNewTx = true;
+                    if (Parameters.recentTxMap.get(hash) == null)
+                        newTx = true;
                 }
-                if (!isNewTx)
+                if (!newTx)
                     continue;
                 //
                 // Request the transaction if it is not in the transaction memory pool
@@ -143,8 +143,7 @@ public class InventoryMessage {
                 try {
                     if (Parameters.blockStore.isNewTransaction(hash)) {
                         synchronized(Parameters.lock) {
-                            if (Parameters.txMap.get(hash) == null &&
-                                                Parameters.recentTxMap.get(hash) == null &&
+                            if (Parameters.recentTxMap.get(hash) == null &&
                                                 !Parameters.pendingRequests.contains(request) &&
                                                 !Parameters.processedRequests.contains(request)) {
                                 Parameters.pendingRequests.add(0, request);

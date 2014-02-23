@@ -46,7 +46,7 @@ public abstract class BlockStore {
     protected static final long MAX_BLOCK_FILE_SIZE = 256 * 1024 * 1024;
 
     /** Maximum age (seconds) of spent transactions in the transaction outputs table */
-    protected static final long MAX_TX_AGE = 1 * 24 * 60 * 60;
+    protected static final long MAX_TX_AGE = 2 * 24 * 60 * 60;
 
     /** Block chain checkpoints */
     protected static final Map<Integer, Sha256Hash> checkpoints = new HashMap<>();

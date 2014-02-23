@@ -375,17 +375,18 @@ public class NetworkListener implements Runnable {
                 if (currentTime > lastStatsTime + (5*60)) {
                     lastStatsTime = currentTime;
                     log.info(String.format("=======================================================\n"+
-                                           "** Chain height: Network %d, Local %d\n"+
+                                           "** Chain height: Network %,d, Local %,d\n"+
                                            "** Connections: %,d outbound, %,d inbound\n"+
                                            "** Addresses: %,d peers, %,d banned\n"+
                                            "** Blocks: %,d received, %,d sent, %,d filtered sent\n"+
-                                           "** Transactions: %,d received, %,d sent, %d rejected\n"+
+                                           "** Transactions: %,d received, %,d sent, %,d rejected, %,d orphaned\n"+
                                            "=======================================================",
                                 Parameters.networkChainHeight, Parameters.blockStore.getChainHeight(),
                                 outboundCount, connections.size()-outboundCount,
                                 Parameters.peerAddresses.size(), bannedAddresses.size(),
                                 Parameters.blocksReceived, Parameters.blocksSent, Parameters.filteredBlocksSent,
-                                Parameters.txReceived, Parameters.txSent, Parameters.txRejected));
+                                Parameters.txReceived, Parameters.txSent, Parameters.txRejected,
+                                Parameters.orphanTxList.size()));
                     System.gc();
                 }
             }

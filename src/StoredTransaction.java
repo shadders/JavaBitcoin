@@ -32,6 +32,9 @@ public class StoredTransaction {
     /** Transaction hash */
     private Sha256Hash hash;
 
+    /** Parent transaction hash */
+    private Sha256Hash parentHash;
+
     /** Time when transaction was broadcast */
     private long txTimeStamp;
 
@@ -70,6 +73,25 @@ public class StoredTransaction {
      */
     public Sha256Hash getHash() {
         return hash;
+    }
+
+    /**
+     * Returns the parent transaction hash.  The parent is a transaction whose output is
+     * being spent by this transaction.  This is used when tracking orphan transactions.
+     *
+     * @return      Parent transaction hash or null if there is no parent
+     */
+    public Sha256Hash getParent() {
+        return parentHash;
+    }
+
+    /**
+     * Sets the parent transaction hash
+     *
+     * @param       parentHash          Parent transaction hash
+     */
+    public void setParent(Sha256Hash parentHash) {
+        this.parentHash = parentHash;
     }
 
     /**

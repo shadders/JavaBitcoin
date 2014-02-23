@@ -18,7 +18,6 @@ package JavaBitcoin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -127,7 +126,9 @@ public class DatabaseHandler implements Runnable {
                                 notifyPeers(storedBlock);
                         }
                     }
-                    processChildBlock(chainList.get(chainList.size()-1));
+                    StoredBlock parentBlock = chainList.get(chainList.size()-1);
+                    while (parentBlock != null)
+                        parentBlock = processChildBlock(parentBlock);
                 }
             }
             //
@@ -149,9 +150,11 @@ public class DatabaseHandler implements Runnable {
      * Process a child block and see if it can now be added to the chain
      *
      * @param       storedBlock         The updated block
+     * @return                          Next parent block or null
      * @throws      BlockStoreException
      */
-    private void processChildBlock(StoredBlock storedBlock) throws BlockStoreException {
+    private StoredBlock processChildBlock(StoredBlock storedBlock) throws BlockStoreException {
+        StoredBlock parentBlock = null;
         StoredBlock childStoredBlock = Parameters.blockStore.getChildStoredBlock(storedBlock.getHash());
         if (childStoredBlock != null && !childStoredBlock.isOnChain()) {
             //
@@ -169,11 +172,12 @@ public class DatabaseHandler implements Runnable {
                 if (chainHeight >= Parameters.networkChainHeight-3)
                     notifyPeers(childStoredBlock);
                 //
-                // See if we have another child block which can now be processed
+                // Continue working our way up the chain
                 //
-                processChildBlock(childStoredBlock);
+                parentBlock = storedBlock;
             }
         }
+        return parentBlock;
     }
 
     /**

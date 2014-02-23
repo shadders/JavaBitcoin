@@ -16,11 +16,14 @@
 package JavaBitcoin;
 
 import java.math.BigInteger;
+
 import java.net.InetAddress;
+
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -157,20 +160,26 @@ public class Parameters {
     /** List of transactions in the memory pool */
     public static final List<StoredTransaction> txPool = new LinkedList<>();
 
-    /** Map of transactions in the memory pool */
+    /** Map of transactions in the memory pool: txHash -> tx */
     public static final Map<Sha256Hash, StoredTransaction> txMap = new HashMap<>(1000);
 
-    /** List of recent block transactions */
+    /** List of recent transactions */
     public static final List<Sha256Hash> recentTxList = new LinkedList<>();
 
-    /** Map of recent block transactions */
-    public static final Map<Sha256Hash, Sha256Hash> recentTxMap = new HashMap<>(1500);
+    /** Map of recent transactions: txHash -> txHash */
+    public static final Map<Sha256Hash, Sha256Hash> recentTxMap = new HashMap<>(1000);
+
+    /** List of orphan transactions */
+    public static final List<StoredTransaction> orphanTxList = new LinkedList<>();
+
+    /** Map of orphan transactions: parentTxHash -> orphanTxList */
+    public static final Map<Sha256Hash, List<StoredTransaction>> orphanTxMap = new HashMap<>(250);
 
     /** List of recent spent outputs */
     public static final List<OutPoint> spentOutputsList = new LinkedList<>();
 
-    /** Map of recent spent outputs */
-    public static final Map<OutPoint, Sha256Hash> spentOutputsMap = new HashMap<>(1500);
+    /** Map of recent spent outputs: Outpoint -> spendingTxHash */
+    public static final Map<OutPoint, Sha256Hash> spentOutputsMap = new HashMap<>(1000);
 
     /** List of Bloom filters */
     public static final List<BloomFilter> bloomFilters = new LinkedList<>();
@@ -185,7 +194,7 @@ public class Parameters {
     public static final List<PeerAddress> peerAddresses = new LinkedList<>();
 
     /** Peer address map */
-    public static final Map<PeerAddress, PeerAddress> peerMap = new HashMap<>(1000);
+    public static final Map<PeerAddress, PeerAddress> peerMap = new HashMap<>(250);
 
     /** Completed messages */
     public static final List<Message> completedMessages = new LinkedList<>();

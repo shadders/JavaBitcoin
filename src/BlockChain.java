@@ -19,6 +19,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
+
+import java.nio.ByteBuffer;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -240,49 +243,75 @@ public class BlockChain {
             }
         }
         //
-        // Release the block and update the chain head if no problems were found.
-        // Otherwise, leave the block on hold in the block store.
+        // Stop now if the block is not ready for processing
         //
-        if (!onHold) {
-            //
-            // Add this block to the end of the chain
-            //
-            chainList.add(storedBlock);
-            //
-            // Release the block and update the chain work and block height values in the database
-            //
-            storedBlock.setHold(false);
-            Parameters.blockStore.releaseBlock(storedBlock.getHash());
-            for (ChainListener listener : listeners)
-                listener.blockUpdated(storedBlock);
-            //
-            // Make this block the new chain head if it is a better chain than the current chain.
-            // This means the cumulative chain work is greater.
-            //
-            if (storedBlock.getChainWork().compareTo(Parameters.blockStore.getChainWork()) > 0) {
-                try {
-                    Parameters.blockStore.setChainHead(chainList);
-                    for (StoredBlock updatedStoredBlock : chainList) {
-                        Block updatedBlock = updatedStoredBlock.getBlock();
-                        if (updatedBlock != null) {
-                            updatedStoredBlock.setChain(true);
-                            for (ChainListener listener : listeners)
-                                listener.blockUpdated(updatedStoredBlock);
+        if (onHold)
+            return null;
+        //
+        // Add this block to the end of the chain
+        //
+        chainList.add(storedBlock);
+        //
+        // Release the block and update the chain work and block height values in the database
+        //
+        storedBlock.setHold(false);
+        Parameters.blockStore.releaseBlock(storedBlock.getHash());
+        for (ChainListener listener : listeners)
+            listener.blockUpdated(storedBlock);
+        //
+        // Make this block the new chain head if it is a better chain than the current chain.
+        // This means the cumulative chain work is greater.
+        //
+        if (storedBlock.getChainWork().compareTo(Parameters.blockStore.getChainWork()) > 0) {
+            try {
+                Parameters.blockStore.setChainHead(chainList);
+                for (StoredBlock updatedStoredBlock : chainList) {
+                    Block updatedBlock = updatedStoredBlock.getBlock();
+                    if (updatedBlock == null)
+                        continue;
+                    //
+                    // Notify listeners that we updated the block
+                    //
+                    updatedStoredBlock.setChain(true);
+                    for (ChainListener listener : listeners)
+                        listener.blockUpdated(updatedStoredBlock);
+                    //
+                    // Get any orphan transactions that are waiting for transactions in this block
+                    //
+                    List<StoredTransaction> retryList = new LinkedList<>();
+                    List<Transaction> txList = updatedBlock.getTransactions();
+                    synchronized(Parameters.lock) {
+                        for (Transaction tx : txList) {
+                            List<StoredTransaction> orphanList =
+                                            Parameters.orphanTxMap.remove(tx.getHash());
+                            if (orphanList != null) {
+                                for (StoredTransaction orphan : orphanList) {
+                                    Parameters.orphanTxList.remove(orphan);
+                                    retryList.add(orphan);
+                                }
+                            }
                         }
                     }
-                    for (ChainListener listener : listeners)
-                        listener.chainUpdated();
-                } catch (VerificationException exc) {
-                    chainList = null;
-                    log.info(String.format("Block being held due to verification failure\n  Block %s",
-                                           exc.getHash().toString()));
+                    //
+                    // Retry transactions that are still not in the database
+                    //
+                    for (StoredTransaction orphan : retryList) {
+                        if (Parameters.blockStore.isNewTransaction(orphan.getHash())) {
+                            Transaction tx = orphan.getTransaction();
+                            TransactionMessage.retryOrphanTransaction(tx);
+                        }
+                    }
                 }
+                //
+                // Notify listeners that the block chain has been updated
+                //
+                for (ChainListener listener : listeners)
+                    listener.chainUpdated();
+            } catch (VerificationException exc) {
+                chainList = null;
+                log.info(String.format("Block being held due to verification failure\n  Block %s",
+                                       exc.getHash().toString()));
             }
-        } else {
-            //
-            // We didn't update the chain this time, so don't return any blocks
-            //
-            chainList = null;
         }
         return chainList;
     }
