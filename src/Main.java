@@ -28,6 +28,7 @@ import java.net.UnknownHostException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.LogManager;
 import java.util.Properties;
 
 import javax.swing.*;
@@ -50,20 +51,23 @@ import javax.swing.*;
  * using DNS discovery.  The production database will be used.</p>
  * <p>The following command-line arguments are supported:</p>
  * <table>
- * <col width=20%/>
- * <col width=80%/>
+ * <col width=30%/>
+ * <col width=70%/>
  * <tr><td>LOAD PROD|TEST directory-path start-block</td>
  * <td>Load the block chain from the reference client data directory and create the block database.  Specify PROD
  * to load the production database or TEST to load the test database.  The
  * default reference client data directory will be used if no directory path is specified.  The program will
  * terminate after loading the block chain.</td></tr>
+ *
  * <tr><td>PROD peer1 peer2 ...</td>
  * <td>tart the program using the production network.  Application files are stored in the application data
  * directory and the production database is used.
  * DNS discovery will be used if no peer nodes are specified.</td></tr>
+ *
  * <tr><td>RETRY PROD|TEST block-hash</td>
  * <td>Retry a block which is currently held.  Specify PROD to use the production database or TEST to use the
- * test database.  The block hash is the 64-character hash for the block to be retried.
+ * test database.  The block hash is the 64-character hash for the block to be retried.</td></tr>
+ *
  * <tr><td>TEST peer1 peer2 ...</td>
  * <td>Start the program using the test network.  Application files are stored in the TestNet folder in the
  * application data directory and the test database is used.  DNS discovery will be used if no peer nodes are
@@ -75,41 +79,49 @@ import javax.swing.*;
  *
  * <p>The following command-line options can be specified:</p>
  * <table>
- * <col width=20%/>
- * <col width=80%/>
+ * <col width=30%/>
+ * <col width=70%/>
  * <tr><td>-Dbitcoin.datadir=directory-path</td>
  * <td>Specifies the application data directory.  Application data will be stored in
  * ~/AppData/Roaming/JavaBitcoin if no path is specified.</td></tr>
+ *
  * <tr><td>-Dbitcoin.verify.blocks=n</td>
  * <td>Blocks are normally verified as they are added to the block chain.  Block verification can be disabled
  * to improve performance. Specify 1 to enable verification and 0 to disable verification.
  * The default is 1.</td></tr>
+ *
  * <tr><td>-Djava.util.logging.config.file=file-path</td>
- * <td>Specifies the logger configuration file.  The default Java runtime configuration file will be used
- * if this option is not specified.
+ * <td>Specifies the logger configuration file.  The logger properties will be read from 'logging.properties'
+ * in the application data directory.  If this file is not found, the 'java.util.logging.config.file' system
+ * property will be used to locate the logger configuration file.  If this property is not defined,
+ * the logger properties will be obtained from jre/lib/logging.properties.
  *      <ul>
- *      <li>JDK FINE corresponds to our DEBUG level</li>
- *      <li>JDK INFO corresponds to our INFO level</li>
- *      <li>JDK WARNING corresponds to our WARN level</li>
- *      <li>JDK SEVERE corresponds to our ERROR level</li>
+ *      <li>JDK FINE corresponds to the SLF4J DEBUG level</li>
+ *      <li>JDK INFO corresponds to the SLF4J INFO level</li>
+ *      <li>JDK WARNING corresponds to the SLF4J WARN level</li>
+ *      <li>JDK SEVERE corresponds to the SLF4J ERROR level</li>
  *      </ul>
  *  </td></tr>
  * </table>
  *
  * <p>The following properties can be specified in javabitcoin.properties:</p>
  * <table>
- * <col width=20%/>
- * <col width=80%/>
+ * <col width=30%/>
+ * <col width=70%/>
  * <tr><td>maxconnections=n</td>
  * <td>Specifies the maximum number of incoming and outgoing connections.  JavaBitcoin allocates 4
  * outgoing connections during program initialization, so the number of incoming connections
  * is maxconnections-4.  The default for maxconnections is 32.</td></tr>
+ *
  * <tr><td>port=n</td>
  * <td>Specifies the port for incoming connections.  The default port 8333</td></tr>
+ *
  * <tr><td>dbuser=userid</td>
  * <td>Specifies the SQL database user</td></tr>
+ *
  * <tr><td>dbpw=password</td>
  * <td>Specifies the SQL database password</td></tr>
+ *
  * <tr><td>dbport=n</td>
  * <td>Specifies the SQL database TCP/IP port</td></tr>
  * </table>
@@ -199,21 +211,14 @@ public class Main {
     public static void main(String[] args) {
         try {
             //
-            // Use the brief logging format
-            //
-            BriefLogFormatter.init();
-            //
             // Process command-line options
             //
             dataPath = System.getProperty("bitcoin.datadir");
             if (dataPath == null)
                 dataPath = System.getProperty("user.home")+"\\AppData\\Roaming\\JavaBitcoin";
-            log.info(String.format("Application data path: '%s'", dataPath));
-
             String pString = System.getProperty("bitcoin.verify.blocks");
             if (pString != null && pString.equals("0"))
                 verifyBlocks = false;
-            log.info(String.format("Block verification is %s", (verifyBlocks?"enabled":"disabled")));
             //
             // Process command-line arguments
             //
@@ -231,6 +236,20 @@ public class Main {
             File dirFile = new File(dataPath);
             if (!dirFile.exists())
                 dirFile.mkdirs();
+            //
+            // Initialize the logging properties from 'logging.properties'
+            //
+            File logFile = new File(dataPath+"\\logging.properties");
+            if (logFile.exists()) {
+                FileInputStream inStream = new FileInputStream(logFile);
+                LogManager.getLogManager().readConfiguration(inStream);
+            }
+            //
+            // Use the brief logging format
+            //
+            BriefLogFormatter.init();
+            log.info(String.format("Application data path: '%s'", dataPath));
+            log.info(String.format("Block verification is %s", (verifyBlocks?"enabled":"disabled")));
             //
             // Load the saved application properties
             //
