@@ -126,17 +126,33 @@ public class InventoryMessage {
                 if (badTransactions.contains(hash))
                     continue;
                 //
+                // Skip the transaction if we have already seen it
+                //
+                boolean isNewTx = false;
+                synchronized(Parameters.lock) {
+                    if (Parameters.txMap.get(hash) == null && Parameters.recentTxMap.get(hash) == null)
+                        isNewTx = true;
+                }
+                if (!isNewTx)
+                    continue;
+                //
                 // Request the transaction if it is not in the transaction memory pool
                 // and has not been requested.  We add the request at the front of the
                 // queue so it does not get stuck behind pending block requests.
                 //
-                synchronized(Parameters.lock) {
-                    if (Parameters.txMap.get(hash) == null &&
-                                        Parameters.recentTxMap.get(hash) == null &&
-                                        !Parameters.pendingRequests.contains(request) &&
-                                        !Parameters.processedRequests.contains(request)) {
-                        Parameters.pendingRequests.add(0, request);
+                try {
+                    if (Parameters.blockStore.isNewTransaction(hash)) {
+                        synchronized(Parameters.lock) {
+                            if (Parameters.txMap.get(hash) == null &&
+                                                Parameters.recentTxMap.get(hash) == null &&
+                                                !Parameters.pendingRequests.contains(request) &&
+                                                !Parameters.processedRequests.contains(request)) {
+                                Parameters.pendingRequests.add(0, request);
+                            }
+                        }
                     }
+                } catch (BlockStoreException exc) {
+                    // Unable to check database - wait for another inventory broadcast
                 }
             } else if (type == Parameters.INV_BLOCK) {
                 //
@@ -154,9 +170,7 @@ public class InventoryMessage {
                         }
                     }
                 } catch (BlockStoreException exc) {
-                    //
                     // Unable to check database - wait for another inventory broadcast
-                    //
                 }
             }
         }

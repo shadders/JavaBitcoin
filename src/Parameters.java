@@ -87,6 +87,9 @@ public class Parameters {
     /** Dust transaction value */
     public static final BigInteger DUST_TRANSACTION = new BigInteger("5430", 10);
 
+    /** Minimum transaction relay fee */
+    public static final BigInteger MIN_TX_RELAY_FEE = new BigInteger("10000", 10);
+
     /** Maximum ban score before a peer is disconnected */
     public static final int MAX_BAN_SCORE = 100;
 

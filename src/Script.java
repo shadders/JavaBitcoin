@@ -21,8 +21,11 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Arrays;
 
@@ -180,6 +183,35 @@ public class Script {
     }
 
     /**
+     * Get the input data elements
+     *
+     * @param       scriptBytes     Script bytes
+     * @return                      Data element list
+     * @throws      EOFException    Script is too short
+     */
+    public static List<byte[]> getData(byte[] scriptBytes) throws EOFException {
+        List<byte[]> dataList = new LinkedList<>();
+        int offset = 0;
+        int length = scriptBytes.length;
+        while (offset<length) {
+            int dataLength = -1;
+            int opcode = ((int)scriptBytes[offset++])&0xff;
+            if (opcode <= ScriptOpCodes.OP_PUSHDATA4) {
+                int[] result = getDataLength(opcode, scriptBytes, offset);
+                dataLength = result[0];
+                offset = result[1];
+                if (dataLength > 0) {
+                    if (offset+dataLength > length)
+                        throw new EOFException("End-of-data while processing script");
+                    dataList.add(Arrays.copyOfRange(scriptBytes, offset, offset+dataLength));
+                    offset += dataLength;
+                }
+            }
+        }
+        return dataList;
+    }
+
+    /**
      * Count the number of signature operations in a script
      *
      * OP_CHECKSIG and OP_CHECKSIGVERIFY count as 1 signature operation
@@ -203,7 +235,7 @@ public class Script {
                 offset = result[1];
                 offset += dataLength;
                 if (offset > length)
-                    throw new EOFException("Premature end-of-data while processing script");
+                    throw new EOFException("End-of-data while processing script");
             } else if (opcode == ScriptOpCodes.OP_CHECKSIG || opcode == ScriptOpCodes.OP_CHECKSIGVERIFY) {
                 // OP_CHECKSIG counts as 1 signature operation
                 sigCount++;
@@ -246,7 +278,7 @@ public class Script {
                     offset = result[1];
                     if (dataLength > 0) {
                         if (offset+dataLength > length)
-                            throw new EOFException("Premature end-of-data while processing script");
+                            throw new EOFException("End-of-data while processing script");
                         foundMatch = filter.contains(scriptBytes, offset, dataLength);
                         offset += dataLength;
                     }
@@ -533,13 +565,13 @@ public class Script {
         } else if (opcode == ScriptOpCodes.OP_PUSHDATA1) {
             // The data length is in the next byte
             if (offset > scriptBytes.length-1)
-                throw new EOFException("Premature end-of-data while processing script");
+                throw new EOFException("End-of-data while processing script");
             dataToRead = (int)scriptBytes[offset]&0xff;
             offset++;
         } else if (opcode == ScriptOpCodes.OP_PUSHDATA2) {
             // The data length is in the next two bytes
             if (offset > scriptBytes.length-2)
-                throw new EOFException("Premature end-of-data while processing script");
+                throw new EOFException("End-of-data while processing script");
             dataToRead = ((int)scriptBytes[offset]&0xff) | (((int)scriptBytes[offset+1]&0xff)<<8);
             offset += 2;
         } else if (opcode == ScriptOpCodes.OP_PUSHDATA4) {

@@ -21,7 +21,9 @@ import org.slf4j.LoggerFactory;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
+
 import java.math.BigInteger;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -289,7 +291,7 @@ public class Transaction {
             BigInteger outTotal = BigInteger.ZERO;
             for (TransactionOutput txOut : txOutputs) {
                 BigInteger outValue = txOut.getValue();
-                if (outValue.compareTo(BigInteger.ZERO) < 0) {
+                if (outValue.signum() < 0) {
                     log.error(String.format("Transaction output value is negative\n  %s",
                                             txHash.toString()));
                     throw new VerificationException("Transaction output value is negative",

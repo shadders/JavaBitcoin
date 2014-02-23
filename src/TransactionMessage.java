@@ -15,9 +15,15 @@
  */
 package JavaBitcoin;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+
+import java.math.BigInteger;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -42,6 +48,9 @@ import java.util.List;
  */
 public class TransactionMessage {
 
+    /** Logger instance */
+    private static final Logger log = LoggerFactory.getLogger(TransactionMessage.class);
+
     /**
      * Processes a 'tx' message
      *
@@ -53,6 +62,7 @@ public class TransactionMessage {
      */
     public static void processTransactionMessage(Message msg, ByteArrayInputStream inStream)
                                     throws EOFException, IOException, VerificationException {
+        boolean duplicateTx = false;
         //
         // Get the transaction
         //
@@ -79,12 +89,13 @@ public class TransactionMessage {
         // Ignore the transaction if we have already seen it
         //
         synchronized(Parameters.lock) {
-            if (Parameters.recentTxMap.get(txHash) != null ||
-                                Parameters.txMap.get(txHash) != null)
-                txHash = null;
+            if (Parameters.recentTxMap.get(txHash) != null || Parameters.txMap.get(txHash) != null)
+                duplicateTx = true;
         }
-        if (txHash == null)
+        if (duplicateTx) {
+            log.info(String.format("Discarding duplicate transaction\n  %s", txHash));
             return;
+        }
         //
         // Verify the transaction
         //
@@ -98,6 +109,7 @@ public class TransactionMessage {
         //
         // Check for non-standard transactions that won't be relayed
         //
+        BigInteger totalOutput = BigInteger.ZERO;
         List<TransactionOutput> outputs = tx.getOutputs();
         for (TransactionOutput output : outputs) {
             // Dust transactions are not relayed
@@ -115,25 +127,141 @@ public class TransactionMessage {
                 throw new VerificationException("Non-standard payment types are not relayed",
                                                 Parameters.REJECT_NONSTANDARD, txHash);
             }
+            // Add the output value to the total output value
+            totalOutput = totalOutput.add(output.getValue());
         }
+        //
+        // Validate the transaction inputs
+        //
         List<OutPoint> spentOutputs = new LinkedList<>();
         List<TransactionInput> inputs = tx.getInputs();
+        BigInteger totalInput = BigInteger.ZERO;
+        boolean orphanTx = false;
         for (TransactionInput input : inputs) {
-            // Script size must be less than 500 bytes
+            // Script size must not exceed 500 bytes
             if (input.getScriptBytes().length > 500)
                 throw new VerificationException("Input script size greater than 500 bytes",
                                                 Parameters.REJECT_NONSTANDARD, txHash);
             // Connected output must not be spent
             OutPoint outPoint = input.getOutPoint();
+            StoredOutput output = null;
             Sha256Hash spendHash;
+            boolean outputSpent = false;
             synchronized(Parameters.lock) {
                 spendHash = Parameters.spentOutputsMap.get(outPoint);
             }
-            if (spendHash == null)
-                spentOutputs.add(outPoint);
-            else if (!spendHash.equals(txHash))
+            if (spendHash == null) {
+                // Connected output is not in the recently spent list, check the memory pool
+                StoredTransaction outTx;
+                synchronized(Parameters.lock) {
+                    outTx = Parameters.txMap.get(outPoint.getHash());
+                }
+                if (outTx != null) {
+                    // Transaction is in the memory pool, get the connected output
+                    List<TransactionOutput> txOutputs = outTx.getTransaction().getOutputs();
+                    for (TransactionOutput txOutput : txOutputs) {
+                        if (txOutput.getIndex() == outPoint.getIndex()) {
+                            totalInput = totalInput.add(txOutput.getValue());
+                            output = new StoredOutput(txOutput.getIndex(), txOutput.getValue(),
+                                                      txOutput.getScriptBytes());
+                            break;
+                        }
+                    }
+                    if (output == null)
+                        throw new VerificationException(String.format(
+                                "Transaction references non-existent output\n  %s", txHash.toString()),
+                                Parameters.REJECT_INVALID, txHash);
+                } else {
+                    // Transaction is not in the memory pool, check the database
+                    try {
+                        output = Parameters.blockStore.getTxOutput(outPoint);
+                        if (output == null) {
+                            orphanTx = true;
+                        } else if (output.isSpent()) {
+                            outputSpent = true;
+                        } else {
+                            totalInput = totalInput.add(output.getValue());
+                        }
+                    } catch (BlockStoreException exc) {
+                        orphanTx = true;
+                    }
+                }
+            } else if (!spendHash.equals(txHash)) {
+                outputSpent = true;
+            } else {
+                duplicateTx = true;
+            }
+            // Stop now if we have a problem
+            if (duplicateTx || orphanTx)
+                break;
+            // Error if the output has been spent
+            if (outputSpent)
                 throw new VerificationException(String.format("Input already spent by %s", spendHash.toString()),
                                                 Parameters.REJECT_DUPLICATE, txHash);
+            // Check for canonical signatures and public keys
+            int paymentType = Script.getPaymentType(output.getScriptBytes());
+            List<byte[]> dataList = Script.getData(input.getScriptBytes());
+            int canonicalType = 0;
+            switch (paymentType) {
+                case Script.PAY_TO_PUBKEY:
+                    if (dataList.size() >= 1) {
+                        if (!ECKey.isSignatureCanonical(dataList.get(0)))
+                            canonicalType = 1;
+                    }
+                    break;
+                case Script.PAY_TO_PUBKEY_HASH:
+                    if (dataList.size() >= 2) {
+                        if (!ECKey.isSignatureCanonical(dataList.get(0)))
+                            canonicalType = 1;
+                        else if (!ECKey.isPubKeyCanonical(dataList.get(1)))
+                            canonicalType = 2;
+                    }
+                    break;
+                case Script.PAY_TO_MULTISIG:
+                    for (byte[] sigBytes : dataList) {
+                        if (!ECKey.isSignatureCanonical(sigBytes)) {
+                            canonicalType = 1;
+                            break;
+                        }
+                    }
+            }
+            if (canonicalType == 1)
+                throw new VerificationException(String.format("Non-canonical signature",
+                                                txHash.toString()), Parameters.REJECT_NONSTANDARD, txHash);
+            if (canonicalType == 2)
+                throw new VerificationException(String.format("Non-canonical public key",
+                                                txHash.toString()), Parameters.REJECT_NONSTANDARD, txHash);
+            // Add the output to the spent outputs list
+            spentOutputs.add(outPoint);
+        }
+        //
+        // Ignore a duplicate or orphan transaction
+        //
+        if (duplicateTx)
+            return;
+        if (orphanTx) {
+            synchronized(Parameters.lock) {
+                Parameters.recentTxList.add(txHash);
+                Parameters.recentTxMap.put(txHash, txHash);
+            }
+            log.info(String.format("Orphan transaction discarded\n  %s", txHash.toString()));
+            return;
+        }
+        //
+        // Check for insufficient transaction fee.  We will allow up to 9999 bytes with no fee.
+        // Anything larger must pay the minimum fee for each 1000 bytes of transaction data.
+        //
+        BigInteger totalFee = totalInput.subtract(totalOutput);
+        if (totalFee.signum() < 0)
+            throw new VerificationException("Transaction output value exceeds transaction input value",
+                                            Parameters.REJECT_INVALID, txHash);
+        int txLength = tx.getBytes().length;
+        int feeMultiplier = txLength/1000;
+        if (feeMultiplier >= 10) {
+            BigInteger minFee = Parameters.MIN_TX_RELAY_FEE.multiply(BigInteger.valueOf(feeMultiplier+1));
+            if (totalFee.compareTo(minFee) < 0)
+                throw new VerificationException("Insufficient transaction fee",
+                                                Parameters.REJECT_INSUFFICIENT_FEE, txHash);
         }
         //
         // Store the transaction in the memory pool (maximum size we will store is 100KB)

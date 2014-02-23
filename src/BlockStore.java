@@ -255,10 +255,28 @@ public abstract class BlockStore {
     public abstract List<BlockStatus> getBlockStatus(int maxCount) throws BlockStoreException;
 
     /**
+     * Check if this is a new transaction
+     *
+     * @param       txHash                  Transaction hash
+     * @return                              TRUE if the transaction is not in the database
+     * @throws      BlockStoreException     Unable to check transaction status
+     */
+    public abstract boolean isNewTransaction(Sha256Hash txHash) throws BlockStoreException;
+
+    /**
+     * Returns the requested transaction output
+     *
+     * @param       outPoint                Transaction outpoint
+     * @return                              Transaction output or null if the transaction is not found
+     * @throws      BlockStoreException     Unable to get transaction output status
+     */
+    public abstract StoredOutput getTxOutput(OutPoint outPoint) throws BlockStoreException;
+
+    /**
      * Returns the outputs for the specified transaction
      *
      * @param       txHash                  Transaction hash
-     * @return                              Stored output list or null if the transaction is not found
+     * @return                              Stored output list
      * @throws      BlockStoreException     Unable to get transaction outputs
      */
     public abstract List<StoredOutput> getTxOutputs(Sha256Hash txHash) throws BlockStoreException;
@@ -374,7 +392,7 @@ public abstract class BlockStore {
      */
     protected Block getBlock(int fileNumber, int fileOffset) throws BlockStoreException {
         if (fileNumber < 0)
-            return null;
+            throw new BlockStoreException(String.format("Invalid file number %d", fileNumber));
         Block block = null;
         File blockFile = new File(String.format("%s\\Blocks\\blk%05d.dat", dataPath, fileNumber));
         try {

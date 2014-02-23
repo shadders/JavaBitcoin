@@ -531,10 +531,74 @@ public class BlockStorePg extends BlockStore {
     }
 
     /**
+     * Check if this is a new transaction
+     *
+     * @param       txHash                  Transaction hash
+     * @return                              TRUE if the transaction is not in the database
+     * @throws      BlockStoreException     Unable to check transaction status
+     */
+    public boolean isNewTransaction(Sha256Hash txHash) throws BlockStoreException {
+        boolean isNew = true;
+        try {
+            Connection conn = checkConnection();
+            ResultSet r;
+            try (PreparedStatement s = conn.prepareStatement(
+                            "SELECT timeSpent FROM TxOutputs WHERE txHash=?")) {
+                s.setBytes(1, txHash.getBytes());
+                r = s.executeQuery();
+                if (r.next())
+                    isNew = false;
+                r.close();
+            }
+        } catch (SQLException exc) {
+            log.error(String.format("Unable to get transaction status\n  %s", txHash.toString()), exc);
+            throw new BlockStoreException("Unable to get transaction status");
+        }
+        return isNew;
+    }
+
+    /**
+     * Returns the requested transaction output
+     *
+     * @param       outPoint                Transaction outpoint
+     * @return                              Transaction output or null if the transaction is not found
+     * @throws      BlockStoreException     Unable to get transaction output status
+     */
+    @Override
+    public StoredOutput getTxOutput(OutPoint outPoint) throws BlockStoreException {
+        StoredOutput output = null;
+        try {
+            Connection conn = checkConnection();
+            ResultSet r;
+            try (PreparedStatement s = conn.prepareStatement(
+                            "SELECT timeSpent,value,scriptBytes,blockHeight FROM TxOutputs "+
+                                    "WHERE txHash=? AND txIndex=?")) {
+                s.setBytes(1, outPoint.getHash().getBytes());
+                s.setInt(2, outPoint.getIndex());
+                r = s.executeQuery();
+                if (r.next()) {
+                    long timeSpent = r.getLong(1);
+                    BigInteger value = new BigInteger(r.getBytes(2));
+                    byte[] scriptBytes = r.getBytes(3);
+                    int blockHeight = r.getInt(4);
+                    output = new StoredOutput(outPoint.getIndex(), value, scriptBytes, timeSpent!=0?true:false,
+                                                           blockHeight);
+                }
+                r.close();
+            }
+        } catch (SQLException exc) {
+            log.error(String.format("Unable to get transaction output\n  %s : %d",
+                                    outPoint.getHash().toString(), outPoint.getIndex()), exc);
+            throw new BlockStoreException("Unable to get transaction output");
+        }
+        return output;
+    }
+
+    /**
      * Returns the outputs for the specified transaction
      *
      * @param       txHash                  Transaction hash
-     * @return                              Stored output list or null if the transaction is not found
+     * @return                              Stored output list
      * @throws      BlockStoreException     Unable to get transaction outputs
      */
     @Override
