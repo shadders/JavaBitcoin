@@ -69,13 +69,15 @@ public class PingMessage {
      */
     public static void processPingMessage(Message msg, ByteArrayInputStream inStream)
                                         throws EOFException, IOException {
+        //
+        // BIP0031 adds the 'pong' message and requires an 8-byte nonce in the 'ping'
+        // message.  If we receive a 'ping' without a payload, we do not return a
+        // 'pong' since the client has not implemented BIP0031.
+        //
+        if (inStream.available() < 8)
+            return;
         byte[] bytes = new byte[8];
-        //
-        // Get the nonce from the 'ping' message
-        //
-        int count = inStream.read(bytes);
-        if (count < 8)
-            throw new EOFException("End-of-data while processing 'ping' message");
+        inStream.read(bytes);
         //
         // Build the 'pong' response
         //
