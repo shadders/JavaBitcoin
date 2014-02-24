@@ -109,12 +109,13 @@ import javax.swing.*;
  * <col width=30%/>
  * <col width=70%/>
  * <tr><td>maxconnections=n</td>
- * <td>Specifies the maximum number of incoming and outgoing connections.  JavaBitcoin allocates 4
- * outgoing connections during program initialization, so the number of incoming connections
- * is maxconnections-4.  The default for maxconnections is 32.</td></tr>
+ * <td>Specifies the maximum number of inbound and outbound connections and defaults to 32.</td></tr>
+ *
+ * <tr><td>maxoutbound=n</td>
+ * <td>Specifies the maximum number of outbound connections and defaults to 8.</td></tr>
  *
  * <tr><td>port=n</td>
- * <td>Specifies the port for incoming connections.  The default port 8333</td></tr>
+ * <td>Specifies the port for receiving inbound connections and defaults to 8333</td></tr>
  *
  * <tr><td>dbuser=userid</td>
  * <td>Specifies the SQL database user</td></tr>
@@ -133,6 +134,9 @@ public class Main {
 
     /** Default maximum connections */
     private static final String MAX_CONNECTIONS = "32";
+
+    /** Default maximum outbound connections */
+    private static final String MAX_OUTBOUND = "8";
 
     /** Default database user */
     private static final String DB_USER = "javabtc";
@@ -260,6 +264,7 @@ public class Main {
                 }
             } else {
                 properties.setProperty("maxconnections", MAX_CONNECTIONS);
+                properties.setProperty("maxoutbound", MAX_OUTBOUND);
                 properties.setProperty("port", String.valueOf(Parameters.DEFAULT_PORT));
                 properties.setProperty("dbuser", DB_USER);
                 properties.setProperty("dbpw", DB_PASSWORD);
@@ -313,10 +318,6 @@ public class Main {
             //
             // Start the worker threads
             //
-            // DatabaseListener - 1 thread
-            // NetworkListener - 1 thread
-            // MessageHandler - 3 threads
-            //
             threadGroup = new ThreadGroup("Workers");
 
             databaseHandler = new DatabaseHandler();
@@ -326,6 +327,7 @@ public class Main {
 
             Parameters.networkListener = new NetworkListener(
                         Integer.parseInt(properties.getProperty("maxconnections", MAX_CONNECTIONS)),
+                        Integer.parseInt(properties.getProperty("maxoutbound", MAX_OUTBOUND)),
                         Integer.parseInt(properties.getProperty("port", String.valueOf(Parameters.DEFAULT_PORT))),
                         peerAddresses);
             thread = new Thread(threadGroup, Parameters.networkListener);

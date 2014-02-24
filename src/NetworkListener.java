@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.IOException;
+
 import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.Inet4Address;
@@ -27,8 +28,10 @@ import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
 import java.net.UnknownHostException;
 import java.net.URL;
+
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -60,9 +63,6 @@ public class NetworkListener implements Runnable {
     /** Logger instance */
     private static final Logger log = LoggerFactory.getLogger(NetworkListener.class);
 
-    /** Number of outbound connections */
-    private static final int MAX_OUTBOUND_CONNECTIONS = 8;
-
     /** Maximum number of pending messages for a single peer */
     private static final int MAX_PENDING_MESSAGES = 10;
 
@@ -89,7 +89,10 @@ public class NetworkListener implements Runnable {
     /** Maximum number of connections */
     private int maxConnections;
 
-    /** Number of outbound connections */
+    /** Maximum number of outbound connections */
+    private int maxOutbound;
+
+    /** Current number of outbound connections */
     private int outboundCount;
 
     /** Listen channel */
@@ -138,13 +141,15 @@ public class NetworkListener implements Runnable {
      * Creates the network listener
      *
      * @param       maxConnections      The maximum number of connections
+     * @param       maxOutbound         The maximum number of outbound connections
      * @param       listenPort          The port to listen on
      * @param       staticAddresses     Static peer address
      * @throws      IOException
      */
-    public NetworkListener(int maxConnections, int listenPort, PeerAddress[] staticAddresses)
+    public NetworkListener(int maxConnections, int maxOutbound, int listenPort, PeerAddress[] staticAddresses)
                                         throws IOException {
         this.maxConnections = maxConnections;
+        this.maxOutbound = maxOutbound;
         Parameters.listenPort = listenPort;
         //
         // Create the selector for listening for network events
@@ -168,8 +173,8 @@ public class NetworkListener implements Runnable {
      */
     @Override
     public void run() {
-        log.info(String.format("Network listener started: Port %d, Max connections %d",
-                               Parameters.listenPort, maxConnections));
+        log.info(String.format("Network listener started: Port %d, Max connections %d, Max outbound %d",
+                               Parameters.listenPort, maxConnections, maxOutbound));
         lastPeerUpdateTime = System.currentTimeMillis()/1000;
         lastOutboundConnectTime = lastPeerUpdateTime;
         lastStatsTime = lastPeerUpdateTime;
@@ -201,9 +206,9 @@ public class NetworkListener implements Runnable {
             listenChannel.bind(new InetSocketAddress(Parameters.listenPort), 10);
             listenKey = listenChannel.register(networkSelector, SelectionKey.OP_ACCEPT);
             //
-            // Create the initial outbound connections
+            // Create the initial outbound connections to get us started
             //
-            while (!networkShutdown && outboundCount < MAX_OUTBOUND_CONNECTIONS/2 &&
+            while (!networkShutdown && outboundCount < Math.min(maxOutbound, 4) &&
                                        connections.size() < maxConnections &&
                                        connections.size() < Parameters.peerAddresses.size())
                 if (!connectOutbound())
@@ -350,11 +355,11 @@ public class NetworkListener implements Runnable {
                 }
                 //
                 // Create a new outbound connection if we have less than the
-                // maximum number and we haven't tried for 60 seconds
+                // maximum number and we haven't tried for 30 seconds
                 //
-                if (currentTime > lastOutboundConnectTime+60) {
+                if (currentTime > lastOutboundConnectTime+30) {
                     lastOutboundConnectTime = currentTime;
-                    if (outboundCount < MAX_OUTBOUND_CONNECTIONS &&
+                    if (outboundCount < maxOutbound &&
                                         connections.size() < maxConnections &&
                                         connections.size() < Parameters.peerAddresses.size())
                         connectOutbound();
