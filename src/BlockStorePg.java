@@ -543,7 +543,7 @@ public class BlockStorePg extends BlockStore {
             Connection conn = checkConnection();
             ResultSet r;
             try (PreparedStatement s = conn.prepareStatement(
-                            "SELECT timeSpent FROM TxOutputs WHERE txHash=?")) {
+                            "SELECT timeSpent FROM TxOutputs WHERE txHash=? LIMIT 1")) {
                 s.setBytes(1, txHash.getBytes());
                 r = s.executeQuery();
                 if (r.next())
