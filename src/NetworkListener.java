@@ -360,11 +360,11 @@ public class NetworkListener implements Runnable {
                         connectOutbound();
                 }
                 //
-                // Broadcast our address list every hour.  Don't do this if we are
+                // Broadcast our address list every 8 hours.  Don't do this if we are
                 // using static connections since we don't want to broadcast our
                 // availability in that case.
                 //
-                if (!staticConnections && currentTime > lastAddressTime + (60*60)) {
+                if (!staticConnections && currentTime > lastAddressTime + (8*60*60)) {
                     Message addrMsg = AddressMessage.buildAddressMessage(null);
                     broadcastMessage(addrMsg);
                     lastAddressTime = currentTime;

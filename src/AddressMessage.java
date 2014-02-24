@@ -63,8 +63,8 @@ public class AddressMessage {
      */
     public static Message buildAddressMessage(Peer peer) {
         //
-        // Create an address list containing peers that we have seen within the past hour.
-        // The maximum length of the list is 250 entries.  Static addresses are not included
+        // Create an address list containing peers that we have seen within the past 15 minutes.
+        // The maximum length of the list is 100 entries.  Static addresses are not included
         // in the list.  We will include our own address with a current timestamp if the
         // address is valid.
         //
@@ -77,7 +77,7 @@ public class AddressMessage {
         }
         synchronized(Parameters.lock) {
             for (PeerAddress address : Parameters.peerAddresses) {
-                if (addresses.size() == 250)
+                if (addresses.size() == 100)
                     break;
                 if (address.getTimeStamp() >= oldestTime && !address.isStatic())
                     addresses.add(address);
