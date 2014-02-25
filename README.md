@@ -7,6 +7,8 @@ It does full verification for blocks that it receives and will reject blocks tha
 
 There is a graphical user interface that displays alerts, peer connections (network address and client version) and recent blocks (both chain and orphan).
 
+You can use the production network (PROD) or the regression test network (TEST).  The regression test network is useful because bitcoind will immediately generate a specified number of blocks.  To use the regression test network, start bitcoind with the -regtest option.  You can then generate blocks using bitcoin-cli to issue 'setgenerate true n' where 'n' is the number of blocks to generate.  Block generation will stop after the requested number of blocks have been generated.
+
 BouncyCastle (1.51 or later) is used for the elliptic curve functions.  Version 1.51 provides a custom SecP256K1 curve which significantly improves ECDSA performance.  Earlier versions of BouncyCastle do not provide this support and will not work with JavaBitcoin.
 
 Simple Logging Facade (1.7.5 or later) is used for console and file logging.  I'm using the JDK logger implementation which is controlled by the logging.properties file located in the application data directory.  If no logging.properties file is found, the system logging.properties file will be used (which defaults to logging to the console only).
@@ -14,6 +16,7 @@ Simple Logging Facade (1.7.5 or later) is used for console and file logging.  I'
 The PostgreSQL (9.3 or later) relational database is used.  I tried H2, Firebird and LevelDB as well but decided that I liked PostgreSQL the best.  It has a good GUI and provides tools to manage and backup the database.  You can also run SQL queries against the database from other applications if desired.  I went with an external server for this reason as well as not having to share the address space with the database manager.  However, it is fairly easy to change the block store to use a different database.  H2 and Firebird both provide embedded servers and require minor tweaks to the SQL commands.  LevelDB requires extensive changes since it is a key->value mapping.
 
 Database performance isn't an issue during normal operation, but it is significant when loading the block chain for the first time.  This is primarily caused by the insert/update/delete cycle for the transaction outputs table.  As of February 2014, even with pruned outputs, the transaction outputs table has close to 10 million rows (one row per output).  Even consolidating this to one row per transaction doesn't really make much difference in performance.  One solution is to provide a SQL command file to recreate the database for a given point in time, although this requires some trust but no more than is required when downloading a bootstrap block chain.
+
 
 Build
 =====
@@ -30,12 +33,13 @@ Here are the steps for a manual build:
   - Change to the JavaBitcoin directory (with subdirectories 'doc', 'lib', 'classes' and 'src')
   - The manifest.mf, build-list and doc-list files specify the classpath for the dependent jar files.  Update the list as required to match what you downloaded.
   - Build the classes: javac @build-list
-  - Build the jar: jar cmf manifest.mf JavaBitcoin.jar -C classes JavaBitcoin
+  - Build the jar: jar cmf manifest.mf JavaBitcoin.jar -C classes JavaBitcoin -C resources GenesisBlock
   - Build the documentation: javadoc @doc-list
-  - Copy JavaBitcoin.jar, GenesisBlockProd.dat and GenesisBlockTest.dat to wherever you want to store the executables.
+  - Copy JavaBitcoin.jar to wherever you want to store the executables.
   - Create a shortcut to start JavaBitcoin using java.exe for a command window or javaw.exe for GUI only.  For example:
   
       java.exe -Xmx512m -jar path-to-executables\JavaBitcoin.jar PROD
+  
   
 Install
 =======
