@@ -197,7 +197,7 @@ public class VersionMessage {
         //
         peer.setBlockRelay(true);
         if (count == 5)
-            peer.setTxRelay(bytes[4]!=0 ? true : false);
+            peer.setTxRelay(bytes[4]!=0);
         else
             peer.setTxRelay(true);
     }

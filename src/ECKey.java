@@ -59,6 +59,7 @@ public class ECKey {
     /**
      * Checks if the public key is canonical
      *
+     * @param       pubKeyBytes         Public key
      * @return                          TRUE if the key is canonical
      */
     public static boolean isPubKeyCanonical(byte[] pubKeyBytes) {
@@ -131,9 +132,7 @@ public class ECKey {
         //
         // There must be a single byte appended to the signature
         //
-        if (offset != encodedSig.length-1)
-            return false;
-        return true;
+        return (offset == encodedSig.length-1);
     }
 
     /**

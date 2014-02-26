@@ -23,7 +23,6 @@ import java.io.EOFException;
 import java.io.IOException;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -194,7 +193,7 @@ public class Script {
         int offset = 0;
         int length = scriptBytes.length;
         while (offset<length) {
-            int dataLength = -1;
+            int dataLength;
             int opcode = ((int)scriptBytes[offset++])&0xff;
             if (opcode <= ScriptOpCodes.OP_PUSHDATA4) {
                 int[] result = getDataLength(opcode, scriptBytes, offset);
@@ -267,7 +266,7 @@ public class Script {
         //
         try {
             while (offset<length && !foundMatch) {
-                int dataLength = -1;
+                int dataLength;
                 int opcode = ((int)scriptBytes[offset++])&0xff;
                 if (opcode <= ScriptOpCodes.OP_PUSHDATA4) {
                     //

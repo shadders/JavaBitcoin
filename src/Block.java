@@ -504,7 +504,6 @@ public class Block {
                 }
             }
         }
-        return;
     }
 
     /**

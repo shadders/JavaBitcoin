@@ -52,11 +52,37 @@ public class Parameters {
     /** Production network magic number */
     public static final long MAGIC_NUMBER_PRODNET = 0xd9b4bef9L;
 
-    /** Test network magic number */
-    public static final long MAGIC_NUMBER_TESTNET3 = 0x0709110bL;
+    /** Test network (RegTest) magic number */
+    public static final long MAGIC_NUMBER_TESTNET = 0xdab5bffaL;
 
     /** Magic number */
-    public static long MAGIC_NUMBER = MAGIC_NUMBER_PRODNET;
+    public static long MAGIC_NUMBER;
+
+    /** Production network maximum target difficulty */
+    public static final long MAX_DIFFICULTY_PRODNET = 0x1d00ffffL;
+
+    /** Test network maximum target difficulty */
+    public static final long MAX_DIFFICULTY_TESTNET = 0x207fffffL;
+
+    /** Maximum target difficulty (represents least amount of work) */
+    public static long MAX_TARGET_DIFFICULTY;
+
+    /** Proof-of-work limit */
+    public static BigInteger PROOF_OF_WORK_LIMIT;
+
+    /** Production network genesis block */
+    public static final String GENESIS_BLOCK_PRODNET =
+                    "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
+
+    /** Test network genesis block */
+    public static final String GENESIS_BLOCK_TESTNET =
+                    "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206";
+
+    /** Genesis block hash */
+    public static String GENESIS_BLOCK_HASH;
+
+    /** Genesis block bytes */
+    public static byte[] GENESIS_BLOCK_BYTES;
 
     /** Maximum block size */
     public static final int MAX_BLOCK_SIZE = 1*1024*1024;
@@ -64,34 +90,17 @@ public class Parameters {
     /** Maximum message size */
     public static final int MAX_MESSAGE_SIZE = 2*1024*1024;
 
-    /** Maximum target difficulty (represents least amount of work) */
-    public static final long MAX_TARGET_DIFFICULTY = 0x1d00ffffL;
-
-    /** Proof-of-work limit */
-    public static final BigInteger PROOF_OF_WORK_LIMIT = Utils.decodeCompactBits(MAX_TARGET_DIFFICULTY);
-
     /** Maximum clock drift in seconds */
     public static final long ALLOWED_TIME_DRIFT = 2 * 60 * 60;
-
-    /** Production network genesis block */
-    public static final String GENESIS_BLOCK_PRODNET =
-                    "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
-
-    /** Test network genesis block */
-    public static final String GENESIS_BLOCK_TESTNET3 =
-                    "000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943";
-
-    /** Genesis block hash */
-    public static String GENESIS_BLOCK_HASH = GENESIS_BLOCK_PRODNET;
 
     /** Maximum amount of money in the Bitcoin system */
     public static final BigInteger MAX_MONEY = new BigInteger("21000000", 10).multiply(Utils.COIN);
 
     /** Dust transaction value */
-    public static final BigInteger DUST_TRANSACTION = new BigInteger("5430", 10);
+    public static final BigInteger DUST_TRANSACTION = new BigInteger("5460", 10);
 
     /** Minimum transaction relay fee */
-    public static final BigInteger MIN_TX_RELAY_FEE = new BigInteger("10000", 10);
+    public static final BigInteger MIN_TX_RELAY_FEE = new BigInteger("1000", 10);
 
     /** Maximum ban score before a peer is disconnected */
     public static final int MAX_BAN_SCORE = 100;

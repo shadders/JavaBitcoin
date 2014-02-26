@@ -16,9 +16,6 @@
 package JavaBitcoin;
 
 import java.io.IOException;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Transactions are stored in a memory pool while they are relayed to other nodes

@@ -16,8 +16,6 @@
 package JavaBitcoin;
 
 import javax.swing.table.*;
-import javax.swing.*;
-import java.awt.*;
 
 /**
  * StringRenderer is a cell renderer for use with a JTable column. It aligns
@@ -27,6 +25,8 @@ public class StringRenderer extends DefaultTableCellRenderer {
 
     /**
      * Create a reconcile renderer
+     *
+     * @param       alignment       Desired alignment
      */
     public StringRenderer(int alignment) {
         super();

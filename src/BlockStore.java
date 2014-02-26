@@ -361,6 +361,7 @@ public abstract class BlockStore {
      * work backwards toward the original block.
      *
      * @param       chainHash                   The block hash of the chain head
+     * @return                                  List of blocks in the chain leading to the new head
      * @throws      BlockNotFoundException      A block in the chain was not found
      * @throws      BlockStoreException         Unable to get blocks from the database
      * @throws      ChainTooLongException       The block chain is too long

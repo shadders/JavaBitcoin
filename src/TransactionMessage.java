@@ -394,7 +394,7 @@ public class TransactionMessage {
         //
         // Copy the current list of Bloom filters
         //
-        List<BloomFilter> filters = null;
+        List<BloomFilter> filters;
         synchronized(Parameters.lock) {
             filters = new ArrayList<>(Parameters.bloomFilters.size());
             filters.addAll(Parameters.bloomFilters);

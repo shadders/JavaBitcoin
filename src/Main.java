@@ -18,6 +18,7 @@ package JavaBitcoin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.InputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -36,16 +37,16 @@ import javax.swing.*;
 /**
  * <p>Main class for the JavaBitcoin peer node</p>
  *
- * The JavaBitcoin peer node accepts blocks from the network, verifies them and then stores them in its
- * database.  It will also relay blocks and transactions to other nodes on the network.
+ * <p>The JavaBitcoin peer node accepts blocks from the network, verifies them and then stores them in its
+ * database.  It will also relay blocks and transactions to other nodes on the network.</p>
  *
- * The PostgreSQL relational database is used to store the block chain and transaction outputs.  The
+ * <p>The PostgreSQL relational database is used to store the block chain and transaction outputs.  The
  * production database is named 'javadb' and the test database is named 'jtestdb'.  The database
  * administrator must create these databases before running this program for the first time.  This
  * program will create and initialize the database tables and indexes the first time that it is run.
- * The database user is 'javabtc' and the database password is 'btcnode' for both databases.
+ * The database user is 'javabtc' and the database password is 'btcnode' for both databases.</p>
  *
- * The blocks are stored in the 'Blocks' subdirectory (both blocks on the block chain and orphan blocks).
+ * <p>The blocks are stored in the 'Blocks' subdirectory (both blocks on the block chain and orphan blocks).</p>
  *
  * <p>If no command-line arguments are provided, we will connect to the production Bitcoin network
  * using DNS discovery.  The production database will be used.</p>
@@ -69,9 +70,10 @@ import javax.swing.*;
  * test database.  The block hash is the 64-character hash for the block to be retried.</td></tr>
  *
  * <tr><td>TEST peer1 peer2 ...</td>
- * <td>Start the program using the test network.  Application files are stored in the TestNet folder in the
- * application data directory and the test database is used.  DNS discovery will be used if no peer nodes are
- * specified.</td></tr>
+ * <td>Start the program using the regression test network.  Application files are stored in the TestNet
+ * folder in the application data directory and the test database is used.  At least one peer node must
+ * be specified since DNS discovery is not supported for the regression test network.  Specify 'none'
+ * if you want to just listen for incoming connections without creating any outbound connections.</td></tr>
  * </table>
  *
  * <p>A peer is specified as address:port.  Specifying 'none' will result in no outbound connections and
@@ -229,11 +231,29 @@ public class Main {
             if (args.length != 0)
                 processArguments(args);
             //
-            // Initialize the application variables
+            // Initialize the network parameters (production or test)
             //
-            if (testNetwork)
+            String genesisName;
+            if (testNetwork) {
                 dataPath = dataPath+"\\TestNet";
-            propFile = new File(dataPath+"\\JavaBitcoin.properties");
+                Parameters.MAGIC_NUMBER = Parameters.MAGIC_NUMBER_TESTNET;
+                Parameters.MAX_TARGET_DIFFICULTY = Parameters.MAX_DIFFICULTY_TESTNET;
+                Parameters.GENESIS_BLOCK_HASH = Parameters.GENESIS_BLOCK_TESTNET;
+                genesisName = "GenesisBlock/GenesisBlockTest.dat";
+            } else {
+                Parameters.MAGIC_NUMBER = Parameters.MAGIC_NUMBER_PRODNET;
+                Parameters.MAX_TARGET_DIFFICULTY = Parameters.MAX_DIFFICULTY_PRODNET;
+                Parameters.GENESIS_BLOCK_HASH = Parameters.GENESIS_BLOCK_PRODNET;
+                genesisName = "GenesisBlock/GenesisBlockProd.dat";
+            }
+            Parameters.PROOF_OF_WORK_LIMIT = Utils.decodeCompactBits(Parameters.MAX_TARGET_DIFFICULTY);
+            //
+            // Load the genesis block
+            //
+            Class<?> mainClass = Class.forName("JavaBitcoin.Main");
+            InputStream classStream = mainClass.getClassLoader().getResourceAsStream(genesisName);
+            Parameters.GENESIS_BLOCK_BYTES = new byte[classStream.available()];
+            classStream.read(Parameters.GENESIS_BLOCK_BYTES);
             //
             // Create the data directory if it doesn't exist
             //
@@ -257,6 +277,7 @@ public class Main {
             //
             // Load the saved application properties
             //
+            propFile = new File(dataPath+"\\JavaBitcoin.properties");
             properties = new Properties();
             if (propFile.exists()) {
                 try (FileInputStream in = new FileInputStream(propFile)) {
@@ -343,6 +364,7 @@ public class Main {
             //
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             javax.swing.SwingUtilities.invokeLater(new Runnable() {
+                @Override
                 public void run() {
                     createAndShowGUI();
                 }
@@ -625,6 +647,8 @@ public class Main {
                 }
             }
         }
+        if (testNetwork && peerAddresses == null)
+            throw new IllegalArgumentException("You must specify a peer or 'none' for the test network");
     }
 
     /**
@@ -665,6 +689,7 @@ public class Main {
             deferredException = exc;
             try {
                 javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
+                    @Override
                     public void run() {
                         Main.logException(deferredText, deferredException);
                         deferredException = null;

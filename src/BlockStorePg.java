@@ -16,7 +16,6 @@
 package JavaBitcoin;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
@@ -236,10 +235,7 @@ public class BlockStorePg extends BlockStore {
                                         "SELECT onChain FROM Blocks WHERE blockHash=?")) {
                 s.setBytes(1, blockHash.getBytes());
                 r = s.executeQuery();
-                if (r.next())
-                    isNewBlock = false;
-                else
-                    isNewBlock = true;
+                isNewBlock = !r.next();
                 r.close();
             }
         } catch (SQLException exc) {
@@ -266,10 +262,7 @@ public class BlockStorePg extends BlockStore {
                                         "SELECT isCanceled FROM Alerts WHERE alertID=?")) {
                 s.setInt(1,alertID);
                 r = s.executeQuery();
-                if (r.next())
-                    isNewAlert = false;
-                else
-                    isNewAlert = true;
+                isNewAlert = !r.next();
                 r.close();
             }
         } catch (SQLException exc) {
@@ -537,6 +530,7 @@ public class BlockStorePg extends BlockStore {
      * @return                              TRUE if the transaction is not in the database
      * @throws      BlockStoreException     Unable to check transaction status
      */
+    @Override
     public boolean isNewTransaction(Sha256Hash txHash) throws BlockStoreException {
         boolean isNew = true;
         try {
@@ -581,7 +575,7 @@ public class BlockStorePg extends BlockStore {
                     BigInteger value = new BigInteger(r.getBytes(2));
                     byte[] scriptBytes = r.getBytes(3);
                     int blockHeight = r.getInt(4);
-                    output = new StoredOutput(outPoint.getIndex(), value, scriptBytes, timeSpent!=0?true:false,
+                    output = new StoredOutput(outPoint.getIndex(), value, scriptBytes, (timeSpent!=0),
                                                            blockHeight);
                 }
                 r.close();
@@ -618,7 +612,7 @@ public class BlockStorePg extends BlockStore {
                     BigInteger value = new BigInteger(r.getBytes(3));
                     byte[] scriptBytes = r.getBytes(4);
                     int blockHeight = r.getInt(5);
-                    StoredOutput output = new StoredOutput(txIndex, value, scriptBytes, timeSpent!=0?true:false,
+                    StoredOutput output = new StoredOutput(txIndex, value, scriptBytes, (timeSpent!=0),
                                                            blockHeight);
                     outputList.add(output);
                 }
@@ -900,6 +894,7 @@ public class BlockStorePg extends BlockStore {
      * work backwards toward the original block.
      *
      * @param       chainHash                   The block hash of the chain head
+     * @return                                  List of blocks in the chain leading to the new head
      * @throws      BlockNotFoundException      A block in the chain was not found
      * @throws      BlockStoreException         Unable to get blocks from the database
      * @throws      ChainTooLongException       The block chain is too long
@@ -929,7 +924,7 @@ public class BlockStorePg extends BlockStore {
                 // (1 days worth).  The caller should call this method again starting with the
                 // last block found to build a sub-segment of the chain.
                 //
-                PreparedStatement s1 = null;
+                PreparedStatement s1;
                 try {
                     Sha256Hash prevHash;
                     boolean onHold;
@@ -1301,7 +1296,7 @@ public class BlockStorePg extends BlockStore {
      * @throws      BlockStoreException Unable to access the database server
      */
     private boolean tableExists(String table) throws BlockStoreException {
-        boolean tableExists = false;
+        boolean tableExists;
         Connection conn = checkConnection();
         try {
             try (Statement s = conn.createStatement()) {
@@ -1353,13 +1348,15 @@ public class BlockStorePg extends BlockStore {
             //
             // Initialize the block chain with the genesis block
             //
-            chainHead = new Sha256Hash(Parameters.GENESIS_BLOCK_HASH);
+            Block genesisBlock = new Block(Parameters.GENESIS_BLOCK_BYTES, 0,
+                                                Parameters.GENESIS_BLOCK_BYTES.length, false);
+            chainHead = genesisBlock.getHash();
             prevChainHead = Sha256Hash.ZERO_HASH;
             chainHeight = 0;
             chainWork = BigInteger.ONE;
             targetDifficulty = Parameters.MAX_TARGET_DIFFICULTY;
             blockFileNumber = 0;
-            chainTime = 0x495fab29L;
+            chainTime = genesisBlock.getTimeStamp();
             //
             // Initialize the Settings table
             //
@@ -1387,16 +1384,12 @@ public class BlockStorePg extends BlockStore {
             // Copy the genesis block as the initial block file
             //
             File blockFile = new File(String.format("%s\\Blocks\\blk00000.dat", dataPath));
-            File genesisFile = new File(String.format("%s\\GenesisBlock.dat", dataPath));
-            int inLength = (int)genesisFile.length();
-            try (FileInputStream inFile = new FileInputStream(genesisFile)) {
-                try (FileOutputStream outFile = new FileOutputStream(blockFile)) {
-                    byte[] blockData = new byte[inLength+8];
-                    Utils.uint32ToByteArrayLE(Parameters.MAGIC_NUMBER, blockData, 0);
-                    Utils.uint32ToByteArrayLE(inLength, blockData, 4);
-                    inFile.read(blockData, 8, inLength);
-                    outFile.write(blockData);
-                }
+            try (FileOutputStream outFile = new FileOutputStream(blockFile)) {
+                byte[] prefixBytes = new byte[8];
+                Utils.uint32ToByteArrayLE(Parameters.MAGIC_NUMBER, prefixBytes, 0);
+                Utils.uint32ToByteArrayLE(Parameters.GENESIS_BLOCK_BYTES.length, prefixBytes, 4);
+                outFile.write(prefixBytes);
+                outFile.write(Parameters.GENESIS_BLOCK_BYTES);
             }
             //
             // All done - commit the updates
@@ -1405,7 +1398,7 @@ public class BlockStorePg extends BlockStore {
             conn.setAutoCommit(true);
             log.info(String.format("Database initialized with schema version %d.%d",
                                    schemaVersion/100, schemaVersion%100));
-        } catch (IOException | SQLException exc) {
+        } catch (IOException | SQLException | VerificationException exc) {
             log.error("Unable to initialize the database tables", exc);
             rollback();
             throw new BlockStoreException("Unable to initialize the database tables");
@@ -1419,7 +1412,7 @@ public class BlockStorePg extends BlockStore {
      */
     private void getSettings() throws BlockStoreException {
         Connection conn = checkConnection();
-        ResultSet r = null;
+        ResultSet r;
         int version = 0;
         try {
             //

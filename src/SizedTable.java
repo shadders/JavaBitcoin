@@ -19,9 +19,7 @@ import java.util.Date;
 
 import javax.swing.*;
 import javax.swing.table.*;
-import javax.swing.event.*;
 import java.awt.*;
-import java.awt.event.*;
 
 /**
  * The SizedTable class is a JTable with column sizes based on the column data types

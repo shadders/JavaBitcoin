@@ -242,7 +242,7 @@ public class GetDataMessage {
         //
         // Build the index list for the matching transactions
         //
-        List<Integer> txIndexes = null;
+        List<Integer> txIndexes;
         List<Transaction> txList = null;
         if (matches.isEmpty()) {
             txIndexes = new ArrayList<>();

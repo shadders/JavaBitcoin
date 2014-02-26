@@ -123,6 +123,8 @@ public class TransactionOutput {
      * Proof-of-burn transactions are sent to '1CounterpartyXXXXXXXXXXXXXXXUWLpVr'.
      * This address has no private key and thus can never be spent.  So we will
      * mark it as unspendable.
+     *
+     * @return                      TRUE if the output is spendable
      */
     public boolean isSpendable() {
         boolean spendable = true;

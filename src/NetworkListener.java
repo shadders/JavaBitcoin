@@ -222,6 +222,7 @@ public class NetworkListener implements Runnable {
         //
         timer = new Timer();
         timer.schedule(new TimerTask() {
+            @Override
             public void run() {
                 wakeup();
             }
@@ -489,6 +490,8 @@ public class NetworkListener implements Runnable {
      * Block notifications will be sent to peers that are providing network services.
      * Transaction notifications will be sent to peers that have requested transaction relays.
      * Alert notifications will be sent to all peers and all alert listeners will be notified.
+     *
+     * @param       msg             Message to broadcast
      */
     public void broadcastMessage(Message msg) {
         //
@@ -999,8 +1002,8 @@ public class NetworkListener implements Runnable {
      */
     private void processRequests() {
         long currentTime = System.currentTimeMillis()/1000;
-        PeerRequest request = null;
-        Peer peer = null;
+        PeerRequest request;
+        Peer peer;
         //
         // Check for request timeouts (we will wait 10 seconds for a response)
         //
@@ -1152,7 +1155,7 @@ public class NetworkListener implements Runnable {
         // Process each seed node and add the node addresses to our peer list
         //
         for (String host : dnsSeeds) {
-            PeerAddress peerAddress = null;
+            PeerAddress peerAddress;
             try {
                 InetAddress[] addresses = InetAddress.getAllByName(host);
                 for (InetAddress address : addresses) {

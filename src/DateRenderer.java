@@ -21,7 +21,6 @@ import java.util.GregorianCalendar;
 
 import javax.swing.*;
 import javax.swing.table.*;
-import java.awt.*;
 
 /**
  * DateRenderer is a cell renderer for use with a JTable column. It formats

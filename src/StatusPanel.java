@@ -30,7 +30,6 @@ import java.util.Map;
 import javax.swing.*;
 import javax.swing.table.*;
 import java.awt.*;
-import java.awt.event.*;
 
 /**
  * This is the status panel for the main window.  It displays information about the current
@@ -284,6 +283,7 @@ public class StatusPanel extends JPanel implements AlertListener, ChainListener,
     @Override
     public void chainUpdated() {
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
+            @Override
             public void run() {
                 updateStatus();
             }
@@ -300,6 +300,7 @@ public class StatusPanel extends JPanel implements AlertListener, ChainListener,
     public void connectionStarted(Peer peer, int count) {
         connectionTableModel.addConnection(peer);
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
+            @Override
             public void run() {
                 updateStatus();
             }
@@ -316,6 +317,7 @@ public class StatusPanel extends JPanel implements AlertListener, ChainListener,
     public void connectionEnded(Peer peer, int count) {
         connectionTableModel.removeConnection(peer);
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
+            @Override
             public void run() {
                 updateStatus();
             }
@@ -558,6 +560,7 @@ public class StatusPanel extends JPanel implements AlertListener, ChainListener,
             if (!refreshPending) {
                 refreshPending = true;
                 javax.swing.SwingUtilities.invokeLater(new Runnable() {
+                    @Override
                     public void run() {
                         fireTableDataChanged();
                         refreshPending = false;
@@ -699,6 +702,7 @@ public class StatusPanel extends JPanel implements AlertListener, ChainListener,
             if (!refreshPending) {
                 refreshPending = true;
                 javax.swing.SwingUtilities.invokeLater(new Runnable() {
+                    @Override
                     public void run() {
                         fireTableDataChanged();
                         refreshPending = false;
@@ -878,6 +882,7 @@ public class StatusPanel extends JPanel implements AlertListener, ChainListener,
         /**
          * Process the event
          */
+        @Override
         public void run() {
             //
             // Add or remove the peer connection

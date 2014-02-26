@@ -156,6 +156,9 @@ public class Message {
     /**
      * Creates a copy of this message for another peer
      *
+     * @param       peer                Target peer
+     * @return                          Message clone
+     *
      * A new ByteBuffer is created using the same byte array.  This allows multiple
      * channels to process the data at the same time.
      */

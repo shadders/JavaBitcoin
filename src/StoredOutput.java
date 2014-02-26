@@ -100,7 +100,7 @@ public class StoredOutput {
         } else {
             heightPresent = false;
         }
-        isSpent = (spent!=0 ? true : false);
+        isSpent = (spent!=0);
         int scriptCount = new VarInt(stream).toInt();
         if (scriptCount > 0) {
             scriptBytes = new byte[scriptCount];
