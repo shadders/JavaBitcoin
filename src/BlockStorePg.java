@@ -1339,12 +1339,21 @@ public class BlockStorePg extends BlockStore {
     /**
      * Initialize the tables
      *
-     * @throws      BlockStoreException Unable to initialize the database tables
+     * @throws      BlockStoreException     Unable to initialize the database tables
      */
     private void initTables() throws BlockStoreException {
         Connection conn = checkConnection();
          try {
             conn.setAutoCommit(false);
+            //
+            // Delete any existing block files
+            //
+            File dirFile = new File(String.format("%s\\Blocks"), dataPath);
+            if (dirFile == null)
+                throw new BlockStoreException("Unable to delete existing block files");
+            File[] fileList = dirFile.listFiles();
+            for (File file : fileList)
+                file.delete();
             //
             // Initialize the block chain with the genesis block
             //
@@ -1381,16 +1390,9 @@ public class BlockStorePg extends BlockStore {
                 s.executeUpdate();
             }
             //
-            // Copy the genesis block as the initial block file
+            // Store the genesis block
             //
-            File blockFile = new File(String.format("%s\\Blocks\\blk00000.dat", dataPath));
-            try (FileOutputStream outFile = new FileOutputStream(blockFile)) {
-                byte[] prefixBytes = new byte[8];
-                Utils.uint32ToByteArrayLE(Parameters.MAGIC_NUMBER, prefixBytes, 0);
-                Utils.uint32ToByteArrayLE(Parameters.GENESIS_BLOCK_BYTES.length, prefixBytes, 4);
-                outFile.write(prefixBytes);
-                outFile.write(Parameters.GENESIS_BLOCK_BYTES);
-            }
+            storeBlock(genesisBlock);
             //
             // All done - commit the updates
             //

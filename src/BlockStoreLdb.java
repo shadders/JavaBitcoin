@@ -175,7 +175,16 @@ public class BlockStoreLdb extends BlockStore {
                                            chainHeight, displayDifficulty, blockFileNumber, chainHead.toString()));
                 } else {
                     //
-                    // We are creating a new database, so get the genesis block
+                    // We are creating a new database, so delete any existing block files
+                    //
+                    File dirFile = new File(String.format("%s\\Blocks"), dataPath);
+                    if (dirFile == null)
+                        throw new BlockStoreException("Unable to delete existing block files");
+                    File[] fileList = dirFile.listFiles();
+                    for (File file : fileList)
+                        file.delete();
+                    //
+                    // Get the genesis block
                     //
                     Block genesisBlock = new Block(Parameters.GENESIS_BLOCK_BYTES, 0,
                                                    Parameters.GENESIS_BLOCK_BYTES.length, false);
