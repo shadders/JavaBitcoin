@@ -97,16 +97,16 @@ The following command-line options can be specified using -Dname=value
   - bitcoin.datadir=directory-path	
     Specifies the application data directory. Application data will be stored in /UserHome/AppData/Roaming/JavaBitcoin if no path is specified.
 	
-  - bitcoin.verify.blocks=n	
+  - bitcoin.verify.blocks=n		
     Blocks are normally verified as they are added to the block chain. Block verification can be disabled to improve performance. Specify 1 to enable verification and 0 to disable verification. The default is 1.
 	
-  - java.util.logging.config.file=file-path	
+  - java.util.logging.config.file=file-path		
     Specifies the logger configuration file. The logger properties will be read from 'logging.properties' in the application data directory. If this file is not found, the 'java.util.logging.config.file' system property will be used to locate the logger configuration file. If this property is not defined, the logger properties will be obtained from jre/lib/logging.properties.
 	
     JDK FINE corresponds to the SLF4J DEBUG level	
 	JDK INFO corresponds to the SLF4J INFO level	
-	JDK WARNING corresponds to the SLF4J WARN level	
-	JDK SEVERE corresponds to the SLF4J ERROR level	
+	JDK WARNING corresponds to the SLF4J WARN level		
+	JDK SEVERE corresponds to the SLF4J ERROR level		
 	
 The following properties can be specified in javabitcoin.properties:
 
@@ -119,7 +119,7 @@ The following properties can be specified in javabitcoin.properties:
   - port=n	
 	Specifies the port for receiving inbound connections and defaults to 8333
 	
-  - dbtype=type	
+  - dbtype=type		
 	Specify 'leveldb' to use LevelDB for the database or 'postgresql' to use PostgreSQL. The LevelDB database will be used if no value is specified.  Note that changing the database type after running JavaBitcoin will require the new database to be built starting with the genesis block.  For this reason, the Blocks subdirectory should be deleted before starting JavaBitcoin for the first time after changing the database.  You can move the files to another directory and then use them to load the new database.
 	
   - dbuser=userid	
