@@ -21,7 +21,7 @@ The PostgreSQL (9.3 or later) relational database can also be used.  It has a go
 
 Database performance isn't an issue during normal operation, but it is significant when loading the block chain for the first time.  This is primarily caused by the insert/update/delete cycle for the transaction outputs table.  As of February 2014, even with pruned outputs, the transaction outputs table has close to 10 million rows (one row per output).  Even consolidating this to one row per transaction doesn't really make much difference in performance.
 
-A compiled version is available here: https://drive.google.com/folderview?id=0B1312_6UqRHPYjUtbU1hdW9VMW8&usp=sharing.  Download JavaBitcoin-1-1.zip and extract the files to a directory of your choice.  If you are building from the source, the dependent jar files can also be obtained here.
+A compiled version is available here: https://drive.google.com/folderview?id=0B1312_6UqRHPYjUtbU1hdW9VMW8&usp=sharing.  Download JavaBitcoin-1.1.zip and extract the files to a directory of your choice.  If you are building from the source, the dependent jar files can also be obtained here.
 
 
 Build
@@ -103,10 +103,10 @@ The following command-line options can be specified using -Dname=value
   - java.util.logging.config.file=file-path	
     Specifies the logger configuration file. The logger properties will be read from 'logging.properties' in the application data directory. If this file is not found, the 'java.util.logging.config.file' system property will be used to locate the logger configuration file. If this property is not defined, the logger properties will be obtained from jre/lib/logging.properties.
 	
-    JDK FINE corresponds to the SLF4J DEBUG level
-	JDK INFO corresponds to the SLF4J INFO level
-	JDK WARNING corresponds to the SLF4J WARN level
-	JDK SEVERE corresponds to the SLF4J ERROR level
+    JDK FINE corresponds to the SLF4J DEBUG level	
+	JDK INFO corresponds to the SLF4J INFO level	
+	JDK WARNING corresponds to the SLF4J WARN level	
+	JDK SEVERE corresponds to the SLF4J ERROR level	
 	
 The following properties can be specified in javabitcoin.properties:
 
