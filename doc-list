@@ -1,4 +1,4 @@
--classpath lib/bcprov-jdk15on-151.jar;lib/slf4j-api-1.7.5.jar;lib/slf4j-jdk14-1.7.5.jar
+-classpath lib/bcprov-jdk15on-151.jar;lib/slf4j-api-1.7.5.jar;lib/slf4j-jdk14-1.7.5.jar;lib/leveldbjni-all-1.8.jar
 -d doc
 -windowtitle JavaBitcoin
 src/AddressMessage.java
@@ -12,6 +12,7 @@ src/BlockNotFoundException.java
 src/BlockStatus.java
 src/BlockStore.java
 src/BlockStoreException.java
+src/BlockStoreLdb.java
 src/BlockStorePg.java
 src/BloomFilter.java
 src/BriefLogFormatter.java

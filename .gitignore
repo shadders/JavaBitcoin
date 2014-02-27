@@ -2,6 +2,7 @@
 classes/
 doc/
 lib/
+package/
 
 # Build Files #
 *.class
@@ -10,3 +11,4 @@ lib/
 *.jar
 *.war
 *.ear
+*.zip

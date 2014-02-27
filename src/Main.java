@@ -40,14 +40,6 @@ import javax.swing.*;
  * <p>The JavaBitcoin peer node accepts blocks from the network, verifies them and then stores them in its
  * database.  It will also relay blocks and transactions to other nodes on the network.</p>
  *
- * <p>The PostgreSQL relational database is used to store the block chain and transaction outputs.  The
- * production database is named 'javadb' and the test database is named 'jtestdb'.  The database
- * administrator must create these databases before running this program for the first time.  This
- * program will create and initialize the database tables and indexes the first time that it is run.
- * The database user is 'javabtc' and the database password is 'btcnode' for both databases.</p>
- *
- * <p>The blocks are stored in the 'Blocks' subdirectory (both blocks on the block chain and orphan blocks).</p>
- *
  * <p>If no command-line arguments are provided, we will connect to the production Bitcoin network
  * using DNS discovery.  The production database will be used.</p>
  * <p>The following command-line arguments are supported:</p>
@@ -61,7 +53,7 @@ import javax.swing.*;
  * terminate after loading the block chain.</td></tr>
  *
  * <tr><td>PROD peer1 peer2 ...</td>
- * <td>tart the program using the production network.  Application files are stored in the application data
+ * <td>Start the program using the production network.  Application files are stored in the application data
  * directory and the production database is used.
  * DNS discovery will be used if no peer nodes are specified.</td></tr>
  *
@@ -72,8 +64,7 @@ import javax.swing.*;
  * <tr><td>TEST peer1 peer2 ...</td>
  * <td>Start the program using the regression test network.  Application files are stored in the TestNet
  * folder in the application data directory and the test database is used.  At least one peer node must
- * be specified since DNS discovery is not supported for the regression test network.  Specify 'none'
- * if you want to just listen for incoming connections without creating any outbound connections.</td></tr>
+ * be specified since DNS discovery is not supported for the regression test network.</td></tr>
  * </table>
  *
  * <p>A peer is specified as address:port.  Specifying 'none' will result in no outbound connections and
@@ -118,6 +109,10 @@ import javax.swing.*;
  *
  * <tr><td>port=n</td>
  * <td>Specifies the port for receiving inbound connections and defaults to 8333</td></tr>
+ *
+ * <tr><td>dbtype=type</td>
+ * <td>Specify 'leveldb' to use LevelDB for the database or 'postgresql' to use PostgreSQL.
+ * The LevelDB database will be used if no value is specified.</td></tr>
  *
  * <tr><td>dbuser=userid</td>
  * <td>Specifies the SQL database user</td></tr>
@@ -287,6 +282,7 @@ public class Main {
                 properties.setProperty("maxconnections", MAX_CONNECTIONS);
                 properties.setProperty("maxoutbound", MAX_OUTBOUND);
                 properties.setProperty("port", String.valueOf(Parameters.DEFAULT_PORT));
+                properties.setProperty("dbtype", "leveldb");
                 properties.setProperty("dbuser", DB_USER);
                 properties.setProperty("dbpw", DB_PASSWORD);
                 properties.setProperty("dbport", DB_PORT);
@@ -296,10 +292,20 @@ public class Main {
             // Create the block store.  We will use the 'javadb' database for the production network
             // and the 'jtestdb' database for the test network.
             //
-            blockStore = new BlockStorePg(dataPath, testNetwork?"jtestdb":"javadb",
-                            properties.getProperty("dbuser", DB_USER),
-                            properties.getProperty("dbpw", DB_PASSWORD),
-                            Integer.parseInt(properties.getProperty("dbport", DB_PORT)));
+            String dbtype = properties.getProperty("dbtype", "leveldb");
+            switch (dbtype) {
+                case "postgresql":
+                    blockStore = new BlockStorePg(dataPath, testNetwork?"jtestdb":"javadb",
+                                    properties.getProperty("dbuser", DB_USER),
+                                    properties.getProperty("dbpw", DB_PASSWORD),
+                                    Integer.parseInt(properties.getProperty("dbport", DB_PORT)));
+                    break;
+                case "leveldb":
+                    blockStore = new BlockStoreLdb(dataPath);
+                    break;
+                default:
+                    throw new IllegalArgumentException(String.format("Unrecognized database type '%s", dbtype));
+            }
             Parameters.blockStore = blockStore;
             //
             // Create the block chain

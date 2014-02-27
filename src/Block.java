@@ -418,7 +418,7 @@ public class Block {
         // by requiring an increasing number of leading zeroes in the block hash)
         //
         BigInteger target = getTargetDifficultyAsInteger();
-        if (target.compareTo(BigInteger.ZERO) <= 0 || target.compareTo(Parameters.PROOF_OF_WORK_LIMIT) > 0) {
+        if (target.signum() <= 0 || target.compareTo(Parameters.PROOF_OF_WORK_LIMIT) > 0) {
             log.error(String.format("Target difficulty %s is not valid\n  Block %s",
                                      target.toString(), blockHash.toString()));
             throw new VerificationException("Target difficulty is not valid",
