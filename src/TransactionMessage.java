@@ -341,8 +341,7 @@ public class TransactionMessage {
             return false;
         }
         //
-        // Check for insufficient transaction fee.  We will allow up to 50000 bytes with no fee.
-        // Anything larger must pay the minimum fee for each 1000 bytes of transaction data.
+        // Check for insufficient transaction fee
         //
         BigInteger totalFee = totalInput.subtract(totalOutput);
         if (totalFee.signum() < 0)
@@ -350,7 +349,7 @@ public class TransactionMessage {
                                             Parameters.REJECT_INVALID, txHash);
         int txLength = tx.getBytes().length;
         int feeMultiplier = txLength/1000;
-        if (feeMultiplier >= 50) {
+        if (txLength > Parameters.MAX_FREE_TX_SIZE) {
             BigInteger minFee = Parameters.MIN_TX_RELAY_FEE.multiply(BigInteger.valueOf(feeMultiplier+1));
             if (totalFee.compareTo(minFee) < 0)
                 throw new VerificationException("Insufficient transaction fee",

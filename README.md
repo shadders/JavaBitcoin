@@ -130,3 +130,11 @@ The following properties can be specified in javabitcoin.properties:
 	
   - dbport=n	
 	Specifies the PostgreSQL database TCP/IP port  
+
+Sample Windows shortcut:
+
+	C:\Windows\System32\javaw.exe -Xmx512m -Djava.library.path=\Bitcoin\JavaBitcoin -jar \Bitcoin\JavaBitcoin\JavaBitcoin.jar
+	
+Replace javaw.exe with java.exe if you want to run from a command prompt.  This will allow you to view log messages as they occur.
+
+The leveldbjni.dll file was extracted from the jar file and placed in the \Bitcoin\JavaBitcoin directory.  Specifying java.library.path tells the JVM where to find the native resources.

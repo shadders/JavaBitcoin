@@ -112,7 +112,6 @@ public class BlockStoreLdb extends BlockStore {
             options.maxOpenFiles(16);
             File fileAlert = new File(dataPath+"\\LevelDB\\AlertDB");
             dbAlert = JniDBFactory.factory.open(fileAlert, options);
-
             //
             // Get the initial values from the database
             //

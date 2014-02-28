@@ -247,6 +247,8 @@ public class Main {
             //
             Class<?> mainClass = Class.forName("JavaBitcoin.Main");
             InputStream classStream = mainClass.getClassLoader().getResourceAsStream(genesisName);
+            if (classStream == null)
+                throw new IllegalStateException("Genesis block resource not found");
             Parameters.GENESIS_BLOCK_BYTES = new byte[classStream.available()];
             classStream.read(Parameters.GENESIS_BLOCK_BYTES);
             //

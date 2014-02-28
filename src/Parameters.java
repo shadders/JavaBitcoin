@@ -47,7 +47,7 @@ public class Parameters {
     public static final int DEFAULT_PORT = 8333;
 
     /** Software identifier */
-    public static final String SOFTWARE_NAME = "/JavaBitcoin:1.0/";
+    public static final String SOFTWARE_NAME = "/JavaBitcoin:1.1/";
 
     /** Production network magic number */
     public static final long MAGIC_NUMBER_PRODNET = 0xd9b4bef9L;
@@ -101,6 +101,9 @@ public class Parameters {
 
     /** Minimum transaction relay fee */
     public static final BigInteger MIN_TX_RELAY_FEE = new BigInteger("1000", 10);
+
+    /** Maximum free transaction size */
+    public static final int MAX_FREE_TX_SIZE = 10000;
 
     /** Maximum ban score before a peer is disconnected */
     public static final int MAX_BAN_SCORE = 100;
