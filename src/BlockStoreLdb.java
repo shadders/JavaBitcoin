@@ -22,7 +22,6 @@ import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 
 import org.fusesource.leveldbjni.JniDBFactory;
-import org.fusesource.leveldbjni.internal.JniDB;
 
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
@@ -850,18 +849,6 @@ public class BlockStoreLdb extends BlockStore {
         }
         log.info(String.format("%,d unspent, %,d spent, %,d deleted",
                                txUnspent, txSpent, txPurged));
-        //
-        // Compact the databases
-        //
-        log.info("Compacting LevelDB databases");
-        synchronized(lock) {
-            ((JniDB)dbBlockChain).compactRange(null, null);
-            ((JniDB)dbBlocks).compactRange(null, null);
-            ((JniDB)dbChild).compactRange(null, null);
-            ((JniDB)dbTxOutputs).compactRange(null, null);
-            ((JniDB)dbAlert).compactRange(null, null);
-        }
-        log.info("Finished compacting LevelDB databases");
     }
 
     /**

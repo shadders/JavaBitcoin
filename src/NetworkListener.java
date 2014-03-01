@@ -33,9 +33,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.*;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Collections;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -162,7 +164,7 @@ public class NetworkListener implements Runnable {
             staticConnections = true;
             for (PeerAddress address : staticAddresses) {
                 address.setStatic(true);
-                Parameters.peerAddresses.add(address);
+                Parameters.peerAddresses.add(0, address);
                 Parameters.peerMap.put(address, address);
             }
         }
@@ -190,10 +192,21 @@ public class NetworkListener implements Runnable {
             //
             getExternalIP();
             //
-            // Get the peer nodes DNS discovery if we are not using static connections
+            // Get the peer nodes DNS discovery if we are not using static connections.
+            // The address list will be sorted in descending timestamp order so that the
+            // most recent peers appear first in the list.
             //
-            if (!staticConnections)
+            if (!staticConnections) {
                 dnsDiscovery();
+                Collections.sort(Parameters.peerAddresses, new Comparator<PeerAddress>() {
+                    @Override
+                    public int compare(PeerAddress addr1, PeerAddress addr2) {
+                        long t1 = addr1.getTimeStamp();
+                        long t2 = addr2.getTimeStamp();
+                        return (t1>t2 ? -1 : (t1<t2 ? 1 : 0));
+                    }
+                });
+            }
             //
             // Get the current alerts
             //
@@ -292,10 +305,10 @@ public class NetworkListener implements Runnable {
                 if (!Parameters.pendingRequests.isEmpty() || !Parameters.processedRequests.isEmpty())
                     processRequests();
                 //
-                // Remove peer addresses that we haven't seen in the last 60 minutes
+                // Remove peer addresses that we haven't seen in the last 30 minutes
                 //
                 long currentTime = System.currentTimeMillis()/1000;
-                if (currentTime > lastPeerUpdateTime + (60*60)) {
+                if (currentTime > lastPeerUpdateTime + (30*60)) {
                     synchronized(Parameters.lock) {
                         Iterator<PeerAddress> iterator = Parameters.peerAddresses.iterator();
                         while (iterator.hasNext()) {
@@ -582,7 +595,7 @@ public class NetworkListener implements Runnable {
     /**
      * Creates a new outbound connection
      *
-     * A random peer is selected from the peer address list and a socket channel is opened.
+     * This routine selects the most recent peer from the peer address list.
      * The channel is placed in non-blocking mode and the connection is initiated.  An OP_CONNECT
      * selection event will be generated when the connection has been established or has failed.
      *
@@ -590,38 +603,18 @@ public class NetworkListener implements Runnable {
      */
     private boolean connectOutbound() {
         //
-        // Pick an IPv4 peer at random (no since picking an IPv6 peer at this point since our
-        // internet provider doesn't support residential IPv6 addresses)
+        // Get the most recent peer that does not have a connection
         //
-        PeerAddress address;
-        boolean addressFound = true;
+        PeerAddress address = null;
         synchronized(Parameters.lock) {
-            int index = (int)((double)Parameters.peerAddresses.size() * Math.random());
-            address = Parameters.peerAddresses.get(index);
-            if (!(address.getAddress() instanceof Inet4Address) ||
-                                address.isConnected() || (staticConnections && !address.isStatic())) {
-                addressFound = false;
-                for (int i=index+1; i<Parameters.peerAddresses.size(); i++) {
-                    address = Parameters.peerAddresses.get(i);
-                    if ((address.getAddress() instanceof Inet4Address) &&
-                                !address.isConnected() && (!staticConnections || address.isStatic())) {
-                        addressFound = true;
-                        break;
-                    }
-                }
-            }
-            if (!addressFound) {
-                for (int i=0; i<index; i++) {
-                    address = Parameters.peerAddresses.get(i);
-                    if ((address.getAddress() instanceof Inet4Address) &&
-                                !address.isConnected() && (!staticConnections || address.isStatic())) {
-                        addressFound = true;
-                        break;
-                    }
+            for (PeerAddress chkAddress : Parameters.peerAddresses) {
+                if (!chkAddress.isConnected() && (!staticConnections || chkAddress.isStatic())) {
+                    address = chkAddress;
+                    break;
                 }
             }
         }
-        if (!addressFound)
+        if (address == null)
             return false;
         //
         // Create a socket channel for the connection and open the connection

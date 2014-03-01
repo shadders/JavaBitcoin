@@ -125,7 +125,7 @@ public class AddressMessage {
             synchronized(Parameters.lock) {
                 PeerAddress mapAddress = Parameters.peerMap.get(peerAddress);
                 if (mapAddress == null) {
-                    Parameters.peerAddresses.add(peerAddress);
+                    Parameters.peerAddresses.add(0, peerAddress);
                     Parameters.peerMap.put(peerAddress, peerAddress);
                 } else {
                     mapAddress.setTimeStamp(Math.max(mapAddress.getTimeStamp(), peerAddress.getTimeStamp()));

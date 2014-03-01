@@ -464,13 +464,18 @@ public class Main {
         //
         blockStore.close();
         //
-        // Save the peer address
+        // Save the first 50 peer addresses
         //
         try {
             try (FileOutputStream outStream = new FileOutputStream(peersFile)) {
+                int peerCount = 0;
                 for (PeerAddress peerAddress : Parameters.peerAddresses) {
-                    if (!peerAddress.isStatic())
+                    if (!peerAddress.isStatic()) {
                         outStream.write(peerAddress.getBytes());
+                        peerCount++;
+                        if (peerCount >= 50)
+                            break;
+                    }
                 }
             }
         } catch (IOException exc) {
