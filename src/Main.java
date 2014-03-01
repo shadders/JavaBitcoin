@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 Ronald W Hoffman
+ * Copyright 2013-2014 Ronald W Hoffman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -156,6 +156,9 @@ public class Main {
     /** Application properties file */
     private static File propFile;
 
+    /** Peer addresses file */
+    private static File peersFile;
+
     /** Test network */
     private static boolean testNetwork = false;
 
@@ -291,8 +294,7 @@ public class Main {
                 saveProperties();
             }
             //
-            // Create the block store.  We will use the 'javadb' database for the production network
-            // and the 'jtestdb' database for the test network.
+            // Create the block store
             //
             String dbtype = properties.getProperty("dbtype", "leveldb");
             switch (dbtype) {
@@ -344,6 +346,20 @@ public class Main {
             // Clean up the database by removing old entries
             //
             blockStore.cleanupDatabase(false);
+            //
+            // Get the peer addresses
+            //
+            peersFile = new File(String.format("%s\\peers.dat", dataPath));
+            if (peersFile.exists()) {
+                int peerCount = (int)peersFile.length()/PeerAddress.PEER_ADDRESS_SIZE;
+                try (FileInputStream inStream = new FileInputStream(peersFile)) {
+                    for (int i=0; i<peerCount; i++) {
+                        PeerAddress peerAddress = new PeerAddress(inStream);
+                        Parameters.peerAddresses.add(peerAddress);
+                        Parameters.peerMap.put(peerAddress, peerAddress);
+                    }
+                }
+            }
             //
             // Start the worker threads
             //
@@ -426,7 +442,6 @@ public class Main {
      * Shutdown and exit
      */
     public static void shutdown() {
-
         //
         // Stop the network
         //
@@ -448,6 +463,19 @@ public class Main {
         // Close the database
         //
         blockStore.close();
+        //
+        // Save the peer address
+        //
+        try {
+            try (FileOutputStream outStream = new FileOutputStream(peersFile)) {
+                for (PeerAddress peerAddress : Parameters.peerAddresses) {
+                    if (!peerAddress.isStatic())
+                        outStream.write(peerAddress.getBytes());
+                }
+            }
+        } catch (IOException exc) {
+            log.error("Unable to save peer addresses", exc);
+        }
         //
         // Save the application properties
         //

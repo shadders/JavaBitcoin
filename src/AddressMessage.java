@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 Ronald W Hoffman
+ * Copyright 2013-2014 Ronald W Hoffman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.net.InetAddress;
+
 import java.util.LinkedList;
 import java.util.List;
 
@@ -45,12 +45,6 @@ import java.util.List;
  * </pre>
  */
 public class AddressMessage {
-
-    /** IPv6-encoded IPv4 address prefix */
-    public static final byte[] IPV6_PREFIX = new byte[] {
-            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
-            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0xff, (byte)0xff
-    };
 
     /**
      * Build an 'addr' message
@@ -87,25 +81,12 @@ public class AddressMessage {
         // Build the message payload
         //
         byte[] varCount = VarInt.encode(addresses.size());
-        byte[] msgData = new byte[addresses.size()*30+varCount.length];
+        byte[] msgData = new byte[addresses.size()*PeerAddress.PEER_ADDRESS_SIZE+varCount.length];
         System.arraycopy(varCount, 0, msgData, 0, varCount.length);
         int offset = varCount.length;
         for (PeerAddress address : addresses) {
-            Utils.uint32ToByteArrayLE(address.getTimeStamp(), msgData, offset);
-            Utils.uint64ToByteArrayLE(address.getServices(), msgData, offset+4);
-            offset += 12;
-            byte[] addrBytes = address.getAddress().getAddress();
-            if (addrBytes.length == 16) {
-                System.arraycopy(addrBytes, 0, msgData, offset, 16);
-            } else {
-                System.arraycopy(IPV6_PREFIX, 0, msgData, offset, 12);
-                System.arraycopy(addrBytes, 0, msgData, offset+12, 4);
-            }
-            offset += 16;
-            int port = address.getPort();
-            msgData[offset] = (byte)(port>>8);
-            msgData[offset+1] = (byte)port;
-            offset += 2;
+            address.getBytes(msgData, offset);
+            offset += PeerAddress.PEER_ADDRESS_SIZE;
         }
         //
         // Build the message
@@ -125,10 +106,7 @@ public class AddressMessage {
      */
     public static void processAddressMessage(Message msg, ByteArrayInputStream inStream)
                                     throws EOFException, IOException, VerificationException {
-        byte[] bytes = new byte[30];
-        byte[] addr4Bytes = new byte[4];
-        byte[] addr6Bytes = new byte[16];
-        long oldestTime = System.currentTimeMillis()/1000 - (15*60);
+        long oldestTime = System.currentTimeMillis()/1000 - (30*60);
         //
         // Get the address count
         //
@@ -136,45 +114,22 @@ public class AddressMessage {
         if (addrCount < 0 || addrCount > 1000)
             throw new VerificationException("More than 1000 addresses in 'addr' message");
         //
-        // Process the addresses and keep any addresses that have been seen within the
-        // past hour
+        // Process the addresses and keep any addresses that are not too old
         //
         for (int i=0; i<addrCount; i++) {
-            int count = inStream.read(bytes);
-            if (count < 30)
-                throw new EOFException("End-of-data on 'addr' message");
-            long timeSeen = Utils.readUint32LE(bytes, 0);
-            if (timeSeen < oldestTime)
+            PeerAddress peerAddress = new PeerAddress(inStream);
+            if (peerAddress.getTimeStamp() < oldestTime ||
+                                    (peerAddress.getServices()&Parameters.NODE_NETWORK) == 0 ||
+                                    peerAddress.getAddress().equals(Parameters.listenAddress))
                 continue;
-            long services = Utils.readUint64LE(bytes, 4);
-            boolean ipv4 = true;
-            for (int j=0; j<12; j++) {
-                if (bytes[j+12] != IPV6_PREFIX[j]) {
-                    ipv4 = false;
-                    break;
-                }
-            }
-            InetAddress address;
-            if (ipv4) {
-                System.arraycopy(bytes, 24, addr4Bytes, 0, 4);
-                address = InetAddress.getByAddress(addr4Bytes);
-            } else {
-                System.arraycopy(bytes, 12, addr6Bytes, 0, 16);
-                address = InetAddress.getByAddress(addr6Bytes);
-            }
-            if (address.equals(Parameters.listenAddress))
-                continue;
-            int port = (((int)bytes[28]&0xff)<<8) | ((int)bytes[29]&0xff);
-            PeerAddress peerAddress = new PeerAddress(address, port, timeSeen);
-            peerAddress.setServices(services);
             synchronized(Parameters.lock) {
                 PeerAddress mapAddress = Parameters.peerMap.get(peerAddress);
                 if (mapAddress == null) {
                     Parameters.peerAddresses.add(peerAddress);
                     Parameters.peerMap.put(peerAddress, peerAddress);
                 } else {
-                    mapAddress.setTimeStamp(Math.max(mapAddress.getTimeStamp(), timeSeen));
-                    mapAddress.setServices(services);
+                    mapAddress.setTimeStamp(Math.max(mapAddress.getTimeStamp(), peerAddress.getTimeStamp()));
+                    mapAddress.setServices(peerAddress.getServices());
                 }
             }
         }

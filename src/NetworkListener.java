@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 Ronald W Hoffman
+ * Copyright 2013-2014 Ronald W Hoffman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -292,10 +292,10 @@ public class NetworkListener implements Runnable {
                 if (!Parameters.pendingRequests.isEmpty() || !Parameters.processedRequests.isEmpty())
                     processRequests();
                 //
-                // Remove peer addresses that we haven't seen in the last 30 minutes
+                // Remove peer addresses that we haven't seen in the last 60 minutes
                 //
                 long currentTime = System.currentTimeMillis()/1000;
-                if (currentTime > lastPeerUpdateTime + (30*60)) {
+                if (currentTime > lastPeerUpdateTime + (60*60)) {
                     synchronized(Parameters.lock) {
                         Iterator<PeerAddress> iterator = Parameters.peerAddresses.iterator();
                         while (iterator.hasNext()) {

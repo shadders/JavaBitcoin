@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 Ronald W Hoffman
+ * Copyright 2013-2014 Ronald W Hoffman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,7 +85,7 @@ public class VersionMessage {
         if (dstAddress.length == 16) {
             System.arraycopy(dstAddress, 0, msgData, 28, 16);
         } else {
-            System.arraycopy(AddressMessage.IPV6_PREFIX, 0, msgData, 28, 12);
+            System.arraycopy(PeerAddress.IPV6_PREFIX, 0, msgData, 28, 12);
             System.arraycopy(dstAddress, 0, msgData, 40, 4);
         }
         msgData[44] = (byte)(dstPort>>8);
@@ -93,7 +93,7 @@ public class VersionMessage {
         if (srcAddress.length == 16) {
             System.arraycopy(srcAddress, 0, msgData, 54, 16);
         } else {
-            System.arraycopy(AddressMessage.IPV6_PREFIX, 0, msgData, 54, 12);
+            System.arraycopy(PeerAddress.IPV6_PREFIX, 0, msgData, 54, 12);
             System.arraycopy(srcAddress, 0, msgData, 66, 4);
         }
         msgData[70] = (byte)(Parameters.listenPort>>8);
@@ -149,7 +149,7 @@ public class VersionMessage {
         if (!Parameters.listenAddressValid) {
             boolean ipv4 = true;
             for (int j=0; j<12; j++) {
-                if (bytes[j+28] != AddressMessage.IPV6_PREFIX[j]) {
+                if (bytes[j+28] != PeerAddress.IPV6_PREFIX[j]) {
                     ipv4 = false;
                     break;
                 }

@@ -1,6 +1,6 @@
 /**
  * Copyright 2011 Google Inc.
- * Copyright 2013 Ronald W Hoffman
+ * Copyright 2013-2014 Ronald W Hoffman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,29 @@
  */
 package JavaBitcoin;
 
+import java.io.EOFException;
+import java.io.InputStream;
+import java.io.IOException;
+
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+
+import java.util.Arrays;
 
 /**
  * A PeerAddress holds an IP address and port number representing the network location of
  * a peer in the Bitcoin Peer-to-Peer network.
  */
 public class PeerAddress {
+
+    /** Length of an encoded peer address */
+    public static final int PEER_ADDRESS_SIZE = 30;
+
+    /** IPv6-encoded IPv4 address prefix */
+    public static final byte[] IPV6_PREFIX = new byte[] {
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0xff, (byte)0xff
+    };
 
     /** The IP address */
     private InetAddress address;
@@ -78,6 +93,65 @@ public class PeerAddress {
      */
     public PeerAddress(InetSocketAddress socket) {
         this(socket.getAddress(), socket.getPort());
+    }
+
+    /**
+     * Constructs a peer address from the serialized data
+     *
+     * @param       inStream        Input stream
+     * @throws      EOFException    End-of-data while processing serialized data
+     * @throws      IOException     Unable to read input stream
+     */
+    public PeerAddress(InputStream inStream) throws EOFException, IOException {
+        byte[] bytes = new byte[PEER_ADDRESS_SIZE];
+        int count = inStream.read(bytes);
+        if (count < PEER_ADDRESS_SIZE)
+            throw new EOFException("End-of-data processing serialized address");
+        timeSeen = Utils.readUint32LE(bytes, 0);
+        services = Utils.readUint64LE(bytes, 4);
+        boolean ipv4 = true;
+        for (int j=0; j<12; j++) {
+            if (bytes[j+12] != IPV6_PREFIX[j]) {
+                ipv4 = false;
+                break;
+            }
+        }
+        if (ipv4)
+            address = InetAddress.getByAddress(Arrays.copyOfRange(bytes, 24, 28));
+        else
+            address = InetAddress.getByAddress(Arrays.copyOfRange(bytes, 12, 28));
+        port = (((int)bytes[28]&0xff)<<8) | ((int)bytes[29]&0xff);
+    }
+
+    /**
+     * Returns the serialized address
+     *
+     * @return                      Serialized address
+     */
+    public byte[] getBytes() {
+        byte[] bytes = new byte[PEER_ADDRESS_SIZE];
+        getBytes(bytes, 0);
+        return bytes;
+    }
+
+    /**
+     * Returns the serialized address
+     *
+     * @param       bytes           Address buffer
+     * @param       offset          Buffer offset
+     */
+    public void getBytes(byte[] bytes, int offset) {
+        Utils.uint32ToByteArrayLE(timeSeen, bytes, offset);
+        Utils.uint64ToByteArrayLE(services, bytes, offset+4);
+        byte[] addrBytes = address.getAddress();
+        if (addrBytes.length == 16) {
+            System.arraycopy(addrBytes, 0, bytes, offset+12, 16);
+        } else {
+            System.arraycopy(IPV6_PREFIX, 0, bytes, offset+12, 12);
+            System.arraycopy(addrBytes, 0, bytes, offset+24, 4);
+        }
+        bytes[offset+28] = (byte)(port>>8);
+        bytes[offset+29] = (byte)port;
     }
 
     /**
