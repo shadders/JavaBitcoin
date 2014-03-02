@@ -71,11 +71,12 @@ public class BlockStoreLdb extends BlockStore {
         Options options = new Options();
         options.createIfMissing(true);
         options.compressionType(CompressionType.NONE);
-        log.info(String.format("LevelDB version %s", JniDBFactory.VERSION));
+        log.info(String.format("LevelDBJni version %s", JniDBFactory.VERSION));
         //
         // Create the LevelDB base directory
         //
-        File databaseDir = new File(dataPath+"\\LevelDB");
+        String basePath = dataPath+Main.fileSeparator+"LevelDB";
+        File databaseDir = new File(basePath);
         if (!databaseDir.exists())
             databaseDir.mkdirs();
         try {
@@ -85,31 +86,31 @@ public class BlockStoreLdb extends BlockStore {
             // Open the BlockChain database
             //
             options.maxOpenFiles(32);
-            File fileBlockChain = new File(dataPath+"\\LevelDB\\BlockChainDB");
+            File fileBlockChain = new File(basePath+Main.fileSeparator+"BlockChainDB");
             dbBlockChain = JniDBFactory.factory.open(fileBlockChain, options);
             //
             // Open the Blocks database
             //
             options.maxOpenFiles(64);
-            File fileBlocks = new File(dataPath+"\\LevelDB\\BlocksDB");
+            File fileBlocks = new File(basePath+Main.fileSeparator+"BlocksDB");
             dbBlocks = JniDBFactory.factory.open(fileBlocks, options);
             //
             // Open the Child database
             //
             options.maxOpenFiles(32);
-            File fileChild = new File(dataPath+"\\LevelDB\\ChildDB");
+            File fileChild = new File(basePath+Main.fileSeparator+"ChildDB");
             dbChild = JniDBFactory.factory.open(fileChild, options);
             //
             // Open the TxOutputs database
             //
             options.maxOpenFiles(1024);
-            File fileTxOutputs = new File(dataPath+"\\LevelDB\\TxOutputsDB");
+            File fileTxOutputs = new File(basePath+Main.fileSeparator+"TxOutputsDB");
             dbTxOutputs = JniDBFactory.factory.open(fileTxOutputs, options);
             //
             // Open the Alerts database
             //
             options.maxOpenFiles(16);
-            File fileAlert = new File(dataPath+"\\LevelDB\\AlertDB");
+            File fileAlert = new File(basePath+Main.fileSeparator+"AlertDB");
             dbAlert = JniDBFactory.factory.open(fileAlert, options);
             //
             // Get the initial values from the database
@@ -149,7 +150,7 @@ public class BlockStoreLdb extends BlockStore {
                     //
                     // Get the cuurrent block file number
                     //
-                    File blockDir = new File(String.format("%s\\Blocks", dataPath));
+                    File blockDir = new File(String.format("%s%sBlocks", dataPath, Main.fileSeparator));
                     String[] fileList = blockDir.list();
                     for (String fileName : fileList) {
                         int sep = fileName.lastIndexOf('.');
@@ -175,7 +176,7 @@ public class BlockStoreLdb extends BlockStore {
                     //
                     // We are creating a new database, so delete any existing block files
                     //
-                    File dirFile = new File(String.format("%s\\Blocks"), dataPath);
+                    File dirFile = new File(String.format("%s%sBlocks", dataPath, Main.fileSeparator));
                     if (dirFile == null)
                         throw new BlockStoreException("Unable to delete existing block files");
                     File[] fileList = dirFile.listFiles();

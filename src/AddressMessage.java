@@ -125,8 +125,21 @@ public class AddressMessage {
             synchronized(Parameters.lock) {
                 PeerAddress mapAddress = Parameters.peerMap.get(peerAddress);
                 if (mapAddress == null) {
-                    Parameters.peerAddresses.add(0, peerAddress);
-                    Parameters.peerMap.put(peerAddress, peerAddress);
+                    boolean added = false;
+                    long timeStamp = peerAddress.getTimeStamp();
+                    for (int j=0; j<Parameters.peerAddresses.size(); j++) {
+                        PeerAddress chkAddress = Parameters.peerAddresses.get(j);
+                        if (chkAddress.getTimeStamp() < timeStamp) {
+                            Parameters.peerAddresses.add(j, peerAddress);
+                            Parameters.peerMap.put(peerAddress, peerAddress);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (!added) {
+                        Parameters.peerAddresses.add(peerAddress);
+                        Parameters.peerMap.put(peerAddress, peerAddress);
+                    }
                 } else {
                     mapAddress.setTimeStamp(Math.max(mapAddress.getTimeStamp(), peerAddress.getTimeStamp()));
                     mapAddress.setServices(peerAddress.getServices());

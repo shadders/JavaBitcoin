@@ -67,7 +67,7 @@ import javax.swing.*;
  * be specified since DNS discovery is not supported for the regression test network.</td></tr>
  * </table>
  *
- * <p>A peer is specified as address:port.  Specifying 'none' will result in no outbound connections and
+ * <p>A peer is specified as [address]:port.  Specifying 'none' will result in no outbound connections and
  * the program will just listen for inbound connections.</p>
  *
  * <p>The following command-line options can be specified:</p>
@@ -144,6 +144,18 @@ public class Main {
     /** Default database port */
     private static final String DB_PORT = "5432";
 
+    /** File separator */
+    public static String fileSeparator;
+
+    /** Line separator */
+    public static String lineSeparator;
+
+    /** User home */
+    public static String userHome;
+
+    /** Operating system */
+    public static String osName;
+
     /** Application properties */
     public static Properties properties;
 
@@ -151,7 +163,7 @@ public class Main {
     public static MainWindow mainWindow;
 
     /** Data directory */
-    private static String dataPath;
+    public static String dataPath;
 
     /** Application properties file */
     private static File propFile;
@@ -214,12 +226,24 @@ public class Main {
      */
     public static void main(String[] args) {
         try {
+            fileSeparator = System.getProperty("file.separator");
+            lineSeparator = System.getProperty("line.separator");
+            userHome = System.getProperty("user.home");
+            osName = System.getProperty("os.name").toLowerCase();
             //
             // Process command-line options
             //
             dataPath = System.getProperty("bitcoin.datadir");
-            if (dataPath == null)
-                dataPath = System.getProperty("user.home")+"\\AppData\\Roaming\\JavaBitcoin";
+            if (dataPath == null) {
+                if (osName.startsWith("win"))
+                    dataPath = userHome+"\\Appdata\\Roaming\\JavaBitcoin";
+                else if (osName.startsWith("linux"))
+                    dataPath = userHome+"/.JavaBitcoin";
+                else if (osName.startsWith("mac os"))
+                    dataPath = userHome+"/Library/Application Support/JavaBitcoin";
+                else
+                    dataPath = userHome+"/JavaBitcoin";
+            }
             String pString = System.getProperty("bitcoin.verify.blocks");
             if (pString != null && pString.equals("0"))
                 verifyBlocks = false;
@@ -233,7 +257,7 @@ public class Main {
             //
             String genesisName;
             if (testNetwork) {
-                dataPath = dataPath+"\\TestNet";
+                dataPath = dataPath+fileSeparator+"TestNet";
                 Parameters.MAGIC_NUMBER = Parameters.MAGIC_NUMBER_TESTNET;
                 Parameters.MAX_TARGET_DIFFICULTY = Parameters.MAX_DIFFICULTY_TESTNET;
                 Parameters.GENESIS_BLOCK_HASH = Parameters.GENESIS_BLOCK_TESTNET;
@@ -263,7 +287,7 @@ public class Main {
             //
             // Initialize the logging properties from 'logging.properties'
             //
-            File logFile = new File(dataPath+"\\logging.properties");
+            File logFile = new File(dataPath+fileSeparator+"logging.properties");
             if (logFile.exists()) {
                 FileInputStream inStream = new FileInputStream(logFile);
                 LogManager.getLogManager().readConfiguration(inStream);
@@ -277,7 +301,7 @@ public class Main {
             //
             // Load the saved application properties
             //
-            propFile = new File(dataPath+"\\JavaBitcoin.properties");
+            propFile = new File(dataPath+fileSeparator+"JavaBitcoin.properties");
             properties = new Properties();
             if (propFile.exists()) {
                 try (FileInputStream in = new FileInputStream(propFile)) {
@@ -349,7 +373,7 @@ public class Main {
             //
             // Get the peer addresses
             //
-            peersFile = new File(String.format("%s\\peers.dat", dataPath));
+            peersFile = new File(String.format("%s%speers.dat", dataPath, fileSeparator));
             if (peersFile.exists()) {
                 int peerCount = (int)peersFile.length()/PeerAddress.PEER_ADDRESS_SIZE;
                 try (FileInputStream inStream = new FileInputStream(peersFile)) {
@@ -508,7 +532,8 @@ public class Main {
             //
             List<File> fileList = new ArrayList<>(150);
             for (int i=startBlock; true; i++) {
-                File file = new File(blockChainPath+String.format("\\blocks\\blk%05d.dat", i));
+                File file = new File(blockChainPath+String.format("%sblocks%sblk%05d.dat",
+                                                                  fileSeparator, fileSeparator, i));
                 if (!file.exists())
                     break;
                 fileList.add(file);
@@ -628,32 +653,33 @@ public class Main {
             } else if (!args[1].equalsIgnoreCase("PROD")) {
                 throw new IllegalArgumentException("Specify PROD or TEST after the LOAD option");
             }
-
             if (args.length > 2) {
                 blockChainPath = args[2];
+            } else if (osName.startsWith("win")) {
+                blockChainPath = userHome+"\\AppData\\Roaming\\Bitcoin";
+            } else if (osName.startsWith("linux")) {
+                blockChainPath = userHome+"/.bitcoin";
+            } else if (osName.startsWith("mac os")) {
+                blockChainPath = userHome+"/Library/Application Support/Bitcoin";
             } else {
-                blockChainPath = System.getProperty("user.home")+"\\AppData\\Roaming\\Bitcoin";
+                blockChainPath = userHome+"/Bitcoin";
             }
-
             if (args.length > 3) {
                 startBlock = Integer.parseInt(args[3]);
             } else {
                 startBlock = 0;
             }
-
             return;
         }
         if (args[0].equalsIgnoreCase("RETRY")) {
             retryBlock = true;
             if (args.length < 3)
                 throw new IllegalArgumentException("Specify PROD or TEST followed by the block hash");
-
             if (args[1].equalsIgnoreCase("TEST")) {
                 testNetwork = true;
             } else if (!args[1].equalsIgnoreCase("PROD")) {
                 throw new IllegalArgumentException("Specify PROD or TEST after the RETRY option");
             }
-
             retryHash = new Sha256Hash(args[2]);
             return;
         }
@@ -673,19 +699,8 @@ public class Main {
                 peerAddresses = new PeerAddress[0];
             } else {
                 peerAddresses = new PeerAddress[count];
-                for (int i=0; i<count; i++) {
-                    String[] peerParts = args[i+1].split(":");
-                    if (peerParts.length != 2)
-                        throw new IllegalArgumentException("Incorrect address:port specification: "+args[i+1]);
-                    String[] addrParts = peerParts[0].split("\\D");
-                    if (addrParts.length != 4)
-                        throw new IllegalArgumentException("Invalid IPv4 address specification: "+peerParts[0]);
-                    byte[] peerAddr = new byte[4];
-                    for (int j=0; j<4; j++)
-                        peerAddr[j] = (byte)Integer.parseInt(addrParts[j]);
-                    InetAddress address = InetAddress.getByAddress(peerAddr);
-                    peerAddresses[i] = new PeerAddress(address, Integer.parseInt(peerParts[1]));
-                }
+                for (int i=0; i<count; i++)
+                    peerAddresses[i] = new PeerAddress(args[i+1]);
             }
         }
         if (testNetwork && peerAddresses == null)

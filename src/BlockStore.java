@@ -118,7 +118,7 @@ public abstract class BlockStore {
         //
         // Create the Blocks subdirectory if it doesn't exist
         //
-        File blocksDir = new File(dataPath+"\\Blocks");
+        File blocksDir = new File(dataPath+Main.fileSeparator+"Blocks");
         if (!blocksDir.exists())
             blocksDir.mkdirs();
     }
@@ -395,7 +395,8 @@ public abstract class BlockStore {
         if (fileNumber < 0)
             throw new BlockStoreException(String.format("Invalid file number %d", fileNumber));
         Block block = null;
-        File blockFile = new File(String.format("%s\\Blocks\\blk%05d.dat", dataPath, fileNumber));
+        File blockFile = new File(String.format("%s%sBlocks%sblk%05d.dat",
+                                        dataPath, Main.fileSeparator, Main.fileSeparator, fileNumber));
         try {
             try (RandomAccessFile inFile = new RandomAccessFile(blockFile, "r")) {
                 inFile.seek(fileOffset);
@@ -446,12 +447,14 @@ public abstract class BlockStore {
         int[] blockLocation = new int[2];
         try {
             byte[] blockData = block.bitcoinSerialize();
-            File blockFile = new File(String.format("%s\\Blocks\\blk%05d.dat", dataPath, blockFileNumber));
+            File blockFile = new File(String.format("%s%sBlocks%sblk%05d.dat",
+                                        dataPath, Main.fileSeparator, Main.fileSeparator, blockFileNumber));
             long filePosition = blockFile.length();
             if (filePosition >= MAX_BLOCK_FILE_SIZE) {
                 blockFileNumber++;
                 filePosition = 0;
-                blockFile = new File(String.format("%s\\Blocks\\blk%05d.dat", dataPath, blockFileNumber));
+                blockFile = new File(String.format("%s%sBlocks%sblk%05d.dat",
+                                        dataPath, Main.fileSeparator, Main.fileSeparator, blockFileNumber));
                 if (blockFile.exists())
                     blockFile.delete();
             }
@@ -478,7 +481,8 @@ public abstract class BlockStore {
      * @param       fileLocation            The file location returned by storeBlock()
      */
     protected void truncateBlockFile(int[] fileLocation) {
-        File blockFile = new File(String.format("%s\\Blocks\\blk%05d.dat", dataPath, fileLocation[0]));
+        File blockFile = new File(String.format("%s%sBlocks%sblk%05d.dat",
+                                        dataPath, Main.fileSeparator, Main.fileSeparator, fileLocation[0]));
         try {
             //
             // If the block is stored at the beginning of the file, just delete the file

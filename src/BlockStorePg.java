@@ -1348,7 +1348,7 @@ public class BlockStorePg extends BlockStore {
             //
             // Delete any existing block files
             //
-            File dirFile = new File(String.format("%s\\Blocks"), dataPath);
+            File dirFile = new File(String.format("%s%sBlocks", dataPath, Main.fileSeparator));
             if (dirFile == null)
                 throw new BlockStoreException("Unable to delete existing block files");
             File[] fileList = dirFile.listFiles();
