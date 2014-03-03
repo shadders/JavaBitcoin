@@ -18,14 +18,18 @@ package JavaBitcoin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 
-import java.net.InetAddress;
 import java.net.UnknownHostException;
+
+import java.nio.channels.FileLock;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +46,7 @@ import javax.swing.*;
  *
  * <p>If no command-line arguments are provided, we will connect to the production Bitcoin network
  * using DNS discovery.  The production database will be used.</p>
+ *
  * <p>The following command-line arguments are supported:</p>
  * <table>
  * <col width=30%/>
@@ -49,26 +54,24 @@ import javax.swing.*;
  * <tr><td>LOAD PROD|TEST directory-path start-block</td>
  * <td>Load the block chain from the reference client data directory and create the block database.  Specify PROD
  * to load the production database or TEST to load the test database.  The
- * default reference client data directory will be used if no directory path is specified.  The program will
- * terminate after loading the block chain.</td></tr>
+ * reference client default data directory will be used if no directory path is specified.  The database load
+ * will start with blk00000.dat if no starting block number is specified.
+ * The program will terminate after loading the block chain.</td></tr>
  *
- * <tr><td>PROD peer1 peer2 ...</td>
+ * <tr><td>PROD</td>
  * <td>Start the program using the production network.  Application files are stored in the application data
- * directory and the production database is used.
- * DNS discovery will be used if no peer nodes are specified.</td></tr>
+ * directory and the production database is used.</td></tr>
  *
  * <tr><td>RETRY PROD|TEST block-hash</td>
  * <td>Retry a block which is currently held.  Specify PROD to use the production database or TEST to use the
- * test database.  The block hash is the 64-character hash for the block to be retried.</td></tr>
+ * test database.  The block hash is the 64-character hash for the block to be retried.
+ * The program will terminate after the block has been processed.</td></tr>
  *
- * <tr><td>TEST peer1 peer2 ...</td>
+ * <tr><td>TEST</td>
  * <td>Start the program using the regression test network.  Application files are stored in the TestNet
  * folder in the application data directory and the test database is used.  At least one peer node must
- * be specified since DNS discovery is not supported for the regression test network.</td></tr>
+ * be specified in JavaBitcoin.conf since DNS discovery is not supported for the regression test network.</td></tr>
  * </table>
- *
- * <p>A peer is specified as [address]:port.  Specifying 'none' will result in no outbound connections and
- * the program will just listen for inbound connections.</p>
  *
  * <p>The following command-line options can be specified:</p>
  * <table>
@@ -76,7 +79,13 @@ import javax.swing.*;
  * <col width=70%/>
  * <tr><td>-Dbitcoin.datadir=directory-path</td>
  * <td>Specifies the application data directory.  Application data will be stored in
- * ~/AppData/Roaming/JavaBitcoin if no path is specified.</td></tr>
+ * a system-specific default directory if no data directory is specified:
+ *      <ul>
+ *      <li>Linux: user-home/.JavaBitcoin</li>
+ *      <li>Mac: user-home/Library/Application Support/JavaBitcoin</li>
+ *      <li>Windows: user-home\AppData\Roaming\JavaBitcoin</li>
+ *      </ul>
+ * </td></tr>
  *
  * <tr><td>-Dbitcoin.verify.blocks=n</td>
  * <td>Blocks are normally verified as they are added to the block chain.  Block verification can be disabled
@@ -97,10 +106,21 @@ import javax.swing.*;
  *  </td></tr>
  * </table>
  *
- * <p>The following properties can be specified in javabitcoin.properties:</p>
+ * <p>The following configuration options can be specified in JavaBitcoin.conf.  Blank lines and lines beginning
+ * with '#' are ignored.</p>
  * <table>
  * <col width=30%/>
  * <col width=70%/>
+ * <tr><td>connect=[address]:port</td>
+ * <td>Connect to the specified peer.  The connect option can be repeated to connect to multiple peers.
+ * If one or more connect options are specified, connections will be created to just the listed peers.
+ * If no connect options is specified, DNS discovery will be used along with broadcast peer addresses to create
+ * outbound connections.</td></tr>
+ *
+ * <tr><td>listen=n</td>
+ * <td>Specify listen=1 to listen for incoming connections and listen=0 to use only outbound connections.
+ * The default is listen=1 if this option is not specified.</td></tr>
+ *
  * <tr><td>maxconnections=n</td>
  * <td>Specifies the maximum number of inbound and outbound connections and defaults to 32.</td></tr>
  *
@@ -112,37 +132,22 @@ import javax.swing.*;
  *
  * <tr><td>dbtype=type</td>
  * <td>Specify 'leveldb' to use LevelDB for the database or 'postgresql' to use PostgreSQL.
- * The LevelDB database will be used if no value is specified.</td></tr>
+ * The LevelDB database will be used if dbtype is not specified.</td></tr>
  *
  * <tr><td>dbuser=userid</td>
- * <td>Specifies the SQL database user</td></tr>
+ * <td>Specifies the PostgreSQL database user and defaults to javabtc</td></tr>
  *
  * <tr><td>dbpw=password</td>
- * <td>Specifies the SQL database password</td></tr>
+ * <td>Specifies the PostgreSQL database password and defaults to btcnode.</td></tr>
  *
  * <tr><td>dbport=n</td>
- * <td>Specifies the SQL database TCP/IP port</td></tr>
+ * <td>Specifies the PostgreSQL database TCP/IP port and defaults to 5432.</td></tr>
  * </table>
  */
 public class Main {
 
     /** Logger instance */
     private static final Logger log = LoggerFactory.getLogger(Main.class);
-
-    /** Default maximum connections */
-    private static final String MAX_CONNECTIONS = "32";
-
-    /** Default maximum outbound connections */
-    private static final String MAX_OUTBOUND = "8";
-
-    /** Default database user */
-    private static final String DB_USER = "javabtc";
-
-    /** Default database password */
-    private static final String DB_PASSWORD = "btcnode";
-
-    /** Default database port */
-    private static final String DB_PORT = "5432";
 
     /** File separator */
     public static String fileSeparator;
@@ -155,6 +160,12 @@ public class Main {
 
     /** Operating system */
     public static String osName;
+
+    /** Application lock file */
+    private static RandomAccessFile lockFile;
+
+    /** Application lock */
+    private static FileLock fileLock;
 
     /** Application properties */
     public static Properties properties;
@@ -173,6 +184,30 @@ public class Main {
 
     /** Test network */
     private static boolean testNetwork = false;
+
+    /** Listen port */
+    private static int listenPort = 8333;
+
+    /** Maximum number of connections */
+    private static int maxConnections = 32;
+
+    /** Maximum number of outbound connections */
+    private static int maxOutbound = 8;
+
+    /** Listen for inbound requests */
+    private static boolean listen = true;
+
+    /** Database type */
+    private static String dbType = "leveldb";
+
+    /** PostgreSQL database user */
+    private static String dbUser = "javabtc";
+
+    /** PostgreSQL database password */
+    private static String dbPW = "btcnode";
+
+    /** PostgreSQL server port */
+    private static int dbPort = 5432;
 
     /** Load block chain */
     private static boolean loadBlockChain = false;
@@ -205,7 +240,7 @@ public class Main {
     private static ThreadGroup threadGroup;
 
     /** Worker threads */
-    private static List<Thread> threads = new ArrayList<>(5);
+    private static final List<Thread> threads = new ArrayList<>(5);
 
     /** Database listener */
     private static DatabaseHandler databaseHandler;
@@ -252,32 +287,8 @@ public class Main {
             //
             if (args.length != 0)
                 processArguments(args);
-            //
-            // Initialize the network parameters (production or test)
-            //
-            String genesisName;
-            if (testNetwork) {
+            if (testNetwork)
                 dataPath = dataPath+fileSeparator+"TestNet";
-                Parameters.MAGIC_NUMBER = Parameters.MAGIC_NUMBER_TESTNET;
-                Parameters.MAX_TARGET_DIFFICULTY = Parameters.MAX_DIFFICULTY_TESTNET;
-                Parameters.GENESIS_BLOCK_HASH = Parameters.GENESIS_BLOCK_TESTNET;
-                genesisName = "GenesisBlock/GenesisBlockTest.dat";
-            } else {
-                Parameters.MAGIC_NUMBER = Parameters.MAGIC_NUMBER_PRODNET;
-                Parameters.MAX_TARGET_DIFFICULTY = Parameters.MAX_DIFFICULTY_PRODNET;
-                Parameters.GENESIS_BLOCK_HASH = Parameters.GENESIS_BLOCK_PRODNET;
-                genesisName = "GenesisBlock/GenesisBlockProd.dat";
-            }
-            Parameters.PROOF_OF_WORK_LIMIT = Utils.decodeCompactBits(Parameters.MAX_TARGET_DIFFICULTY);
-            //
-            // Load the genesis block
-            //
-            Class<?> mainClass = Class.forName("JavaBitcoin.Main");
-            InputStream classStream = mainClass.getClassLoader().getResourceAsStream(genesisName);
-            if (classStream == null)
-                throw new IllegalStateException("Genesis block resource not found");
-            Parameters.GENESIS_BLOCK_BYTES = new byte[classStream.available()];
-            classStream.read(Parameters.GENESIS_BLOCK_BYTES);
             //
             // Create the data directory if it doesn't exist
             //
@@ -299,6 +310,44 @@ public class Main {
             log.info(String.format("Application data path: '%s'", dataPath));
             log.info(String.format("Block verification is %s", (verifyBlocks?"enabled":"disabled")));
             //
+            // Open the application lock file
+            //
+            lockFile = new RandomAccessFile(dataPath+fileSeparator+".lock", "rw");
+            fileLock = lockFile.getChannel().tryLock();
+            if (fileLock == null)
+                throw new IllegalStateException("JavaBitcoin is already running");
+            //
+            // Process configuration file options
+            //
+            processConfig();
+            if (testNetwork && peerAddresses == null && maxOutbound != 0)
+                throw new IllegalArgumentException("You must specify at least one peer for the test network");
+            //
+            // Initialize the network parameters
+            //
+            String genesisName;
+            if (testNetwork) {
+                Parameters.MAGIC_NUMBER = Parameters.MAGIC_NUMBER_TESTNET;
+                Parameters.MAX_TARGET_DIFFICULTY = Parameters.MAX_DIFFICULTY_TESTNET;
+                Parameters.GENESIS_BLOCK_HASH = Parameters.GENESIS_BLOCK_TESTNET;
+                genesisName = "GenesisBlock/GenesisBlockTest.dat";
+            } else {
+                Parameters.MAGIC_NUMBER = Parameters.MAGIC_NUMBER_PRODNET;
+                Parameters.MAX_TARGET_DIFFICULTY = Parameters.MAX_DIFFICULTY_PRODNET;
+                Parameters.GENESIS_BLOCK_HASH = Parameters.GENESIS_BLOCK_PRODNET;
+                genesisName = "GenesisBlock/GenesisBlockProd.dat";
+            }
+            Parameters.PROOF_OF_WORK_LIMIT = Utils.decodeCompactBits(Parameters.MAX_TARGET_DIFFICULTY);
+            //
+            // Load the genesis block
+            //
+            Class<?> mainClass = Class.forName("JavaBitcoin.Main");
+            InputStream classStream = mainClass.getClassLoader().getResourceAsStream(genesisName);
+            if (classStream == null)
+                throw new IllegalStateException("Genesis block resource not found");
+            Parameters.GENESIS_BLOCK_BYTES = new byte[classStream.available()];
+            classStream.read(Parameters.GENESIS_BLOCK_BYTES);
+            //
             // Load the saved application properties
             //
             propFile = new File(dataPath+fileSeparator+"JavaBitcoin.properties");
@@ -307,32 +356,20 @@ public class Main {
                 try (FileInputStream in = new FileInputStream(propFile)) {
                     properties.load(in);
                 }
-            } else {
-                properties.setProperty("maxconnections", MAX_CONNECTIONS);
-                properties.setProperty("maxoutbound", MAX_OUTBOUND);
-                properties.setProperty("port", String.valueOf(Parameters.DEFAULT_PORT));
-                properties.setProperty("dbtype", "leveldb");
-                properties.setProperty("dbuser", DB_USER);
-                properties.setProperty("dbpw", DB_PASSWORD);
-                properties.setProperty("dbport", DB_PORT);
-                saveProperties();
             }
             //
             // Create the block store
             //
-            String dbtype = properties.getProperty("dbtype", "leveldb");
-            switch (dbtype) {
+            switch (dbType) {
                 case "postgresql":
                     blockStore = new BlockStorePg(dataPath, testNetwork?"jtestdb":"javadb",
-                                    properties.getProperty("dbuser", DB_USER),
-                                    properties.getProperty("dbpw", DB_PASSWORD),
-                                    Integer.parseInt(properties.getProperty("dbport", DB_PORT)));
+                                                  dbUser, dbPW, dbPort);
                     break;
                 case "leveldb":
                     blockStore = new BlockStoreLdb(dataPath);
                     break;
                 default:
-                    throw new IllegalArgumentException(String.format("Unrecognized database type '%s", dbtype));
+                    throw new IllegalArgumentException(String.format("Unrecognized database type '%s", dbType));
             }
             Parameters.blockStore = blockStore;
             //
@@ -394,11 +431,8 @@ public class Main {
             thread.start();
             threads.add(thread);
 
-            Parameters.networkListener = new NetworkListener(
-                        Integer.parseInt(properties.getProperty("maxconnections", MAX_CONNECTIONS)),
-                        Integer.parseInt(properties.getProperty("maxoutbound", MAX_OUTBOUND)),
-                        Integer.parseInt(properties.getProperty("port", String.valueOf(Parameters.DEFAULT_PORT))),
-                        peerAddresses);
+            Parameters.networkListener = new NetworkListener(maxConnections, maxOutbound, listenPort,
+                                                             peerAddresses);
             thread = new Thread(threadGroup, Parameters.networkListener);
             thread.start();
             threads.add(thread);
@@ -509,6 +543,14 @@ public class Main {
         // Save the application properties
         //
         saveProperties();
+        //
+        // Close the application lock file
+        //
+        try {
+            fileLock.release();
+            lockFile.close();
+        } catch (IOException exc) {
+        }
         //
         // All done
         //
@@ -634,7 +676,9 @@ public class Main {
     /**
      * Parses the command-line arguments
      *
-     * @param       args            Command-line arguments
+     * @param       args                        Command-line arguments
+     * @throws      IllegalArgumentException    Unrecognized or invalid command argument
+     * @throws      UnknownHostException        Incorrect peer address format
      */
     private static void processArguments(String[] args) throws UnknownHostException {
         //
@@ -647,7 +691,6 @@ public class Main {
             loadBlockChain = true;
             if (args.length < 2)
                 throw new IllegalArgumentException("Specify PROD or TEST with the LOAD option");
-
             if (args[1].equalsIgnoreCase("TEST")) {
                 testNetwork = true;
             } else if (!args[1].equalsIgnoreCase("PROD")) {
@@ -688,23 +731,80 @@ public class Main {
         } else if (!args[0].equalsIgnoreCase("PROD")) {
             throw new IllegalArgumentException("Valid options are LOAD, RETRY, PROD and TEST");
         }
+    }
+
+    /**
+     * Process the configuration file
+     *
+     * @throws      IllegalArgumentException    Invalid configuration option
+     * @throws      IOException                 Unable to read configuration file
+     * @throws      UnknownHostException        Invalid peer address specified
+     */
+    private static void processConfig() throws IOException, IllegalArgumentException, UnknownHostException {
         //
-        // One or more peer nodes can be specified as addr:port (for example, 127.0.0.1:19000)
-        // These nodes will be used instead of using DNS Discovery to find nodes.  Specify
-        // 'none' to disable outbound connections and just listen for inbound connections.
+        // Use the defaults if there is no configuration file
         //
-        int count = args.length - 1;
-        if (count > 0) {
-            if (args[1].equalsIgnoreCase("none")) {
-                peerAddresses = new PeerAddress[0];
-            } else {
-                peerAddresses = new PeerAddress[count];
-                for (int i=0; i<count; i++)
-                    peerAddresses[i] = new PeerAddress(args[i+1]);
+        File configFile = new File(dataPath+Main.fileSeparator+"JavaBitcoin.conf");
+        if (!configFile.exists())
+            return;
+        //
+        // Process the configuration file
+        //
+        List<PeerAddress> addressList = new ArrayList<>(5);
+        try (BufferedReader in = new BufferedReader(new FileReader(configFile))) {
+            String line;
+            while ((line=in.readLine()) != null) {
+                line = line.trim();
+                if (line.length() == 0 || line.charAt(0) == '#')
+                    continue;
+                int sep = line.indexOf('=');
+                if (sep < 1)
+                    throw new IllegalArgumentException(String.format("Invalid configuration option: %s", line));
+                String option = line.substring(0, sep).trim().toLowerCase();
+                String value = line.substring(sep+1).trim();
+                switch (option) {
+                    case "connect":
+                        PeerAddress addr = new PeerAddress(value);
+                        addressList.add(addr);
+                        break;
+                    case "dbport":
+                        dbPort = Integer.parseInt(value);
+                        break;
+                    case "dbpw":
+                        dbPW = value;
+                        break;
+                    case "dbtype":
+                        dbType = value.toLowerCase();
+                        break;
+                    case "dbuser":
+                        dbUser = value;
+                        break;
+                    case "listen":
+                        switch ("value") {
+                            case "1":
+                                listen = true;
+                                break;
+                            case "0":
+                                listen = false;
+                                break;
+                            default:
+                                throw new IllegalArgumentException("Listen value is not 0 or 1");
+                        }
+                        break;
+                    case "maxconnections":
+                        maxConnections = Integer.parseInt(value);
+                        break;
+                    case "maxoutbound":
+                        maxOutbound = Integer.parseInt(value);
+                        break;
+                    case "port":
+                        listenPort = Integer.parseInt(value);
+                        break;
+                }
             }
         }
-        if (testNetwork && peerAddresses == null)
-            throw new IllegalArgumentException("You must specify a peer or 'none' for the test network");
+        if (!addressList.isEmpty())
+            peerAddresses = addressList.toArray(new PeerAddress[addressList.size()]);
     }
 
     /**

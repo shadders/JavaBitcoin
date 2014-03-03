@@ -23,7 +23,6 @@ import java.io.IOException;
 
 import java.net.ConnectException;
 import java.net.InetAddress;
-import java.net.Inet4Address;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
 import java.net.UnknownHostException;
@@ -162,6 +161,7 @@ public class NetworkListener implements Runnable {
         //
         if (staticAddresses != null) {
             staticConnections = true;
+            this.maxOutbound = Math.min(this.maxOutbound, staticAddresses.length);
             for (PeerAddress address : staticAddresses) {
                 address.setStatic(true);
                 Parameters.peerAddresses.add(0, address);

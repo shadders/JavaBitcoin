@@ -40,7 +40,7 @@ Here are the steps for a manual build:
   - Change to the JavaBitcoin directory (with subdirectories 'doc', 'lib', 'classes' and 'src')
   - The manifest.mf, build-list and doc-list files specify the classpath for the dependent jar files.  Update the list as required to match what you downloaded.
   - Build the classes: javac @build-list
-  - Build the jar: jar cmf manifest.mf JavaBitcoin.jar -C classes JavaBitcoin -C resources GenesisBlock
+  - Build the jar: jar cmf manifest.mf JavaBitcoin.jar -C classes . -C resources . 
   - Build the documentation: javadoc @doc-list
   - Copy JavaBitcoin.jar and the 'lib' directory to wherever you want to store the executables.
   - Create a shortcut to start JavaBitcoin using java.exe for a command window or javaw.exe for GUI only.  For example:
