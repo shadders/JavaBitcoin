@@ -47,7 +47,7 @@ public class Parameters {
     public static final int DEFAULT_PORT = 8333;
 
     /** Software identifier */
-    public static final String SOFTWARE_NAME = "/JavaBitcoin:1.1/";
+    public static final String SOFTWARE_NAME = "/JavaBitcoin:1.2/";
 
     /** Production network magic number */
     public static final long MAGIC_NUMBER_PRODNET = 0xd9b4bef9L;
