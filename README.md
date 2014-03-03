@@ -21,7 +21,7 @@ The PostgreSQL (9.3 or later) relational database can also be used.  It has a go
 
 Database performance isn't an issue during normal operation, but it is significant when loading the block chain for the first time.  This is primarily caused by the insert/update/delete cycle for the transaction outputs table.  As of February 2014, even with pruned outputs, the transaction outputs table has close to 10 million rows (one row per output).  Even consolidating this to one row per transaction doesn't really make much difference in performance.
 
-A compiled version is available here: https://drive.google.com/folderview?id=0B1312_6UqRHPYjUtbU1hdW9VMW8&usp=sharing.  Download JavaBitcoin-1.1.zip and extract the files to a directory of your choice.  If you are building from the source, the dependent jar files can also be obtained here.
+A compiled version is available here: https://drive.google.com/folderview?id=0B1312_6UqRHPYjUtbU1hdW9VMW8&usp=sharing.  Download JavaBitcoin-1.2.zip and extract the files to a directory of your choice.  If you are building from the source, the dependent jar files can also be obtained here.
 
 
 Build
