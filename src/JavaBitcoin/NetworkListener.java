@@ -71,15 +71,14 @@ public class NetworkListener implements Runnable {
     private static final String[] dnsSeeds = new String[] {
             "seed.bitcoin.sipa.be",         // Pieter Wuille
             "dnsseed.bluematt.me",          // Matt Corallo
-            "dnsseed.bitcoin.dashjr.org",   // Luke Dashjr
             "seed.bitcoinstats.com"         // bitcoinstats.com
     };
 
     /** Connection listeners */
-    private List<ConnectionListener> connectionListeners = new LinkedList<>();
+    private final List<ConnectionListener> connectionListeners = new LinkedList<>();
 
     /** Alert listeners */
-    private List<AlertListener> alertListeners = new LinkedList<>();
+    private final List<AlertListener> alertListeners = new LinkedList<>();
 
     /** Network listener thread */
     private Thread listenerThread;
@@ -106,10 +105,10 @@ public class NetworkListener implements Runnable {
     private Selector networkSelector;
 
     /** Connections list */
-    private List<Peer> connections = new LinkedList<>();
+    private final List<Peer> connections = new LinkedList<>();
 
     /** Banned list */
-    private List<InetAddress> bannedAddresses = new LinkedList<>();
+    private final List<InetAddress> bannedAddresses = new LinkedList<>();
 
     /** Alert list */
     private List<Alert> alerts;
@@ -1161,7 +1160,7 @@ public class NetworkListener implements Runnable {
                     }
                 }
             } catch (UnknownHostException exc) {
-                log.warn(String.format("DNS host %s not found", host), exc);
+                log.warn(String.format("DNS host %s not found", host));
             }
         }
     }

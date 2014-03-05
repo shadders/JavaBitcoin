@@ -81,21 +81,22 @@ The following command-line arguments are supported:
   - LOAD PROD|TEST directory-path start-block	
     Load the block chain from the reference client data directory and create the block database. Specify PROD to load the production database or TEST to load the test database. The default reference client data directory will be used if no directory path is specified. The program will terminate after loading the block chain.
 	
-  - PROD peer1 peer2 ...	
-    Start the program using the production network. Application files are stored in the application data directory and the production database is used. DNS discovery will be used if no peer nodes are specified.
+  - PROD
+    Start the program using the production network. Application files are stored in the application data directory and the production database is used. DNS discovery will be used to locate peer nodes.
 	
   - RETRY PROD|TEST block-hash	
     Retry a block which is currently held. Specify PROD to use the production database or TEST to use the test database. The block hash is the 64-character hash for the block to be retried.
 	
-  - TEST peer1 peer2 ...	
-    Start the program using the regression test network. Application files are stored in the TestNet folder in the application data directory and the test database is used. At least one peer node must be specified since DNS discovery is not supported for the regression test network.
+  - TEST
+    Start the program using the regression test network. Application files are stored in the TestNet folder in the application data directory and the test database is used. At least one peer node must be specified in BitcoinWallet.conf since DNS discovery is not supported for the regression test network.
 	
-A peer is specified as address:port. Specifying 'none' will result in no outbound connections and the program will just listen for inbound connections.
-
 The following command-line options can be specified using -Dname=value
 
   - bitcoin.datadir=directory-path	
-    Specifies the application data directory. Application data will be stored in /UserHome/AppData/Roaming/JavaBitcoin if no path is specified.
+    Specifies the application data directory. Application data will be stored in a system-specific directory if this option is omitted:
+	    - Linux: user-home/.JavaBitcoin	
+		- Mac: user-home/Library/Application Support/JavaBitcoin	
+		- Windows: user-home/AppData/Roaming/JavaBitcoin	
 	
   - bitcoin.verify.blocks=n		
     Blocks are normally verified as they are added to the block chain. Block verification can be disabled to improve performance. Specify 1 to enable verification and 0 to disable verification. The default is 1.
@@ -108,8 +109,11 @@ The following command-line options can be specified using -Dname=value
 	JDK WARNING corresponds to the SLF4J WARN level		
 	JDK SEVERE corresponds to the SLF4J ERROR level		
 	
-The following properties can be specified in javabitcoin.properties:
+The following configuration options can be specified in JavaBitcoin.conf.  This file is optional and must be in the application directory in order to be used.
 
+  - connect=[address]:port		
+    Specifies the address and port of a peer node.  This statement can be repeated to define multiple nodes.  If this option is specified, outbound connections will be created to only the listed addresses and DNS discovery will not be used.
+	
   - maxconnections=n	
     Specifies the maximum number of inbound and outbound connections and defaults to 32.
 	
@@ -133,7 +137,7 @@ The following properties can be specified in javabitcoin.properties:
 
 Sample Windows shortcut:
 
-	C:\Windows\System32\javaw.exe -Xmx512m -Djava.library.path=\Bitcoin\JavaBitcoin -jar \Bitcoin\JavaBitcoin\JavaBitcoin.jar
+	javaw.exe -Xmx512m -Djava.library.path=\Bitcoin\JavaBitcoin -jar \Bitcoin\JavaBitcoin\JavaBitcoin.jar
 	
 Replace javaw.exe with java.exe if you want to run from a command prompt.  This will allow you to view log messages as they occur.
 

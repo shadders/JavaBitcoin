@@ -114,12 +114,8 @@ import javax.swing.*;
  * <tr><td>connect=[address]:port</td>
  * <td>Connect to the specified peer.  The connect option can be repeated to connect to multiple peers.
  * If one or more connect options are specified, connections will be created to just the listed peers.
- * If no connect options is specified, DNS discovery will be used along with broadcast peer addresses to create
+ * If no connect option is specified, DNS discovery will be used along with the broadcast peer addresses to create
  * outbound connections.</td></tr>
- *
- * <tr><td>listen=n</td>
- * <td>Specify listen=1 to listen for incoming connections and listen=0 to use only outbound connections.
- * The default is listen=1 if this option is not specified.</td></tr>
  *
  * <tr><td>maxconnections=n</td>
  * <td>Specifies the maximum number of inbound and outbound connections and defaults to 32.</td></tr>
@@ -193,9 +189,6 @@ public class Main {
 
     /** Maximum number of outbound connections */
     private static int maxOutbound = 8;
-
-    /** Listen for inbound requests */
-    private static boolean listen = true;
 
     /** Database type */
     private static String dbType = "leveldb";
@@ -712,6 +705,8 @@ public class Main {
             } else {
                 startBlock = 0;
             }
+            if (args.length > 4)
+                throw new IllegalArgumentException("Unrecognized command line parameter");
             return;
         }
         if (args[0].equalsIgnoreCase("RETRY")) {
@@ -724,6 +719,8 @@ public class Main {
                 throw new IllegalArgumentException("Specify PROD or TEST after the RETRY option");
             }
             retryHash = new Sha256Hash(args[2]);
+            if (args.length > 3)
+                throw new IllegalArgumentException("Unrecognized command line parameter");
             return;
         }
         if (args[0].equalsIgnoreCase("TEST")) {
@@ -731,6 +728,8 @@ public class Main {
         } else if (!args[0].equalsIgnoreCase("PROD")) {
             throw new IllegalArgumentException("Valid options are LOAD, RETRY, PROD and TEST");
         }
+        if (args.length > 1)
+            throw new IllegalArgumentException("Unrecognized command line parameter");
     }
 
     /**
@@ -779,18 +778,6 @@ public class Main {
                     case "dbuser":
                         dbUser = value;
                         break;
-                    case "listen":
-                        switch ("value") {
-                            case "1":
-                                listen = true;
-                                break;
-                            case "0":
-                                listen = false;
-                                break;
-                            default:
-                                throw new IllegalArgumentException("Listen value is not 0 or 1");
-                        }
-                        break;
                     case "maxconnections":
                         maxConnections = Integer.parseInt(value);
                         break;
@@ -800,6 +787,8 @@ public class Main {
                     case "port":
                         listenPort = Integer.parseInt(value);
                         break;
+                    default:
+                        throw new IllegalArgumentException(String.format("Invalid configuration option: %s", line));
                 }
             }
         }
