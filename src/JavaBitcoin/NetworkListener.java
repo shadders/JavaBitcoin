@@ -324,20 +324,20 @@ public class NetworkListener implements Runnable {
                     lastPeerUpdateTime = currentTime;
                 }
                 //
-                // Check for inactive peer connections every 5 minutes
+                // Check for inactive peer connections every 2 minutes
                 //
-                // Close the connection if the peer hasn't completed the version handshake within 5 minutes.
-                // Send a 'ping' message if the peer has been inactive for 5 minutes.
-                // Close the connection if the peer has been inactive for 10 minutes.
+                // Close the connection if the peer hasn't completed the version handshake within 2 minutes.
+                // Otherwise, send a 'ping' message.  Close the connection if the peer is still inactive
+                // after 4 minutes.
                 //
-                if (currentTime > lastConnectionCheckTime+5*60) {
+                if (currentTime > lastConnectionCheckTime+2*60) {
                     lastConnectionCheckTime = currentTime;
                     List<Peer> inactiveList = new LinkedList<>();
                     for (Peer chkPeer : connections) {
                         PeerAddress chkAddress = chkPeer.getAddress();
-                        if (chkAddress.getTimeStamp() < currentTime-10*60) {
+                        if (chkAddress.getTimeStamp() < currentTime-4*60) {
                             inactiveList.add(chkPeer);
-                        } else if (chkAddress.getTimeStamp() < currentTime-5*60) {
+                        } else if (chkAddress.getTimeStamp() < currentTime-2*60) {
                             if (chkPeer.getVersionCount() < 2) {
                                 inactiveList.add(chkPeer);
                             } else if (!chkPeer.wasPingSent()) {

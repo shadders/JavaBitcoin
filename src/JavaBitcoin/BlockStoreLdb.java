@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 Ronald W Hoffman
+ * Copyright 2013-2014 Ronald W Hoffman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 
 import org.fusesource.leveldbjni.JniDBFactory;
+import org.fusesource.leveldbjni.internal.JniDB;
 
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
@@ -42,6 +43,30 @@ import java.util.Set;
 /**
  * BlockStoreLdb uses LevelDB databases to store blocks and transactions.  Each
  * database is stored in a separate subdirectory.
+ *
+ * BlockChain database
+ *   - Key is serialized chain height
+ *   - Value is the block hash
+ *
+ * Blocks database
+ *   - Key is the block hash
+ *   - Value is serialized BlockEntry
+ *
+ * Child database
+ *   - Key is the parent block hash
+ *   - Value is the child block hash
+ *
+ * TxOutputs database
+ *   - Key is serialized TransactionID
+ *   - Value is serialized TransactionEntry
+ *
+ * TxSpent database
+ *   - Key is serialized TransactionID
+ *   - Value is serialized time spent
+ *
+ * Alerts database
+ *   - Key is serialized alert ID
+ *   - Value is serialized AlertEntry
  */
 public class BlockStoreLdb extends BlockStore {
 
@@ -56,6 +81,9 @@ public class BlockStoreLdb extends BlockStore {
 
     /** Transaction output database */
     private DB dbTxOutputs;
+
+    /** Spent transaction output database */
+    private DB dbTxSpent;
 
     /** Alert database */
     private DB dbAlert;
@@ -76,6 +104,7 @@ public class BlockStoreLdb extends BlockStore {
         // Create the LevelDB base directory
         //
         String basePath = dataPath+Main.fileSeparator+"LevelDB";
+        String dbPath = basePath+Main.fileSeparator;
         File databaseDir = new File(basePath);
         if (!databaseDir.exists())
             databaseDir.mkdirs();
@@ -86,31 +115,37 @@ public class BlockStoreLdb extends BlockStore {
             // Open the BlockChain database
             //
             options.maxOpenFiles(32);
-            File fileBlockChain = new File(basePath+Main.fileSeparator+"BlockChainDB");
+            File fileBlockChain = new File(dbPath+"BlockChainDB");
             dbBlockChain = JniDBFactory.factory.open(fileBlockChain, options);
             //
             // Open the Blocks database
             //
-            options.maxOpenFiles(64);
-            File fileBlocks = new File(basePath+Main.fileSeparator+"BlocksDB");
+            options.maxOpenFiles(32);
+            File fileBlocks = new File(dbPath+"BlocksDB");
             dbBlocks = JniDBFactory.factory.open(fileBlocks, options);
             //
             // Open the Child database
             //
             options.maxOpenFiles(32);
-            File fileChild = new File(basePath+Main.fileSeparator+"ChildDB");
+            File fileChild = new File(dbPath+"ChildDB");
             dbChild = JniDBFactory.factory.open(fileChild, options);
             //
             // Open the TxOutputs database
             //
             options.maxOpenFiles(1024);
-            File fileTxOutputs = new File(basePath+Main.fileSeparator+"TxOutputsDB");
+            File fileTxOutputs = new File(dbPath+"TxOutputsDB");
             dbTxOutputs = JniDBFactory.factory.open(fileTxOutputs, options);
+            //
+            // Open the TxSpent database
+            //
+            options.maxOpenFiles(32);
+            File fileTxSpent = new File(dbPath+"TxSpentDB");
+            dbTxSpent = JniDBFactory.factory.open(fileTxSpent, options);
             //
             // Open the Alerts database
             //
             options.maxOpenFiles(16);
-            File fileAlert = new File(basePath+Main.fileSeparator+"AlertDB");
+            File fileAlert = new File(dbPath+"AlertDB");
             dbAlert = JniDBFactory.factory.open(fileAlert, options);
             //
             // Get the initial values from the database
@@ -234,6 +269,8 @@ public class BlockStoreLdb extends BlockStore {
                 dbChild.close();
             if (dbTxOutputs != null)
                 dbTxOutputs.close();
+            if (dbTxSpent != null)
+                dbTxSpent.close();
             if (dbAlert != null)
                 dbAlert.close();
         } catch (DBException | IOException exc) {
@@ -812,8 +849,6 @@ public class BlockStoreLdb extends BlockStore {
     @Override
     public void cleanupDatabase(boolean forcePurge) throws BlockStoreException {
         long ageLimit;
-        long txUnspent = 0;
-        long txSpent = 0;
         long txPurged = 0;
         if (forcePurge)
             ageLimit = System.currentTimeMillis()/1000 - 24*60*60;
@@ -823,33 +858,40 @@ public class BlockStoreLdb extends BlockStore {
         log.info("Deleting spent transaction outputs");
         synchronized(lock) {
             try {
-                try (DBIterator it = dbTxOutputs.iterator()) {
+                try (DBIterator it = dbTxSpent.iterator()) {
                     it.seekToFirst();
                     while (it.hasNext()) {
                         Entry<byte[], byte[]> dbEntry = it.next();
-                        TransactionEntry txEntry = new TransactionEntry(dbEntry.getValue());
-                        long timeSpent = txEntry.getTimeSpent();
-                        if (timeSpent != 0) {
-                            if (timeSpent < ageLimit) {
-                                purgeList.add(dbEntry.getKey());
-                                txPurged++;
-                            } else {
-                                txSpent++;
-                            }
-                        } else {
-                            txUnspent++;
+                        long timeSpent = getLong(dbEntry.getValue());
+                        if (timeSpent < ageLimit) {
+                            purgeList.add(dbEntry.getKey());
+                            txPurged++;
                         }
                     }
                 }
-                for (int i=0; i<purgeList.size(); i++)
+                for (int i=0; i<purgeList.size(); i++) {
+                    dbTxSpent.delete(purgeList.get(i));
                     dbTxOutputs.delete(purgeList.get(i));
+                }
             } catch (DBException | IOException exc) {
                 log.error("Unable to remove expired transactions", exc);
                 throw new BlockStoreException("Unable to remove expired transactions");
             }
         }
-        log.info(String.format("%,d unspent, %,d spent, %,d deleted",
-                               txUnspent, txSpent, txPurged));
+        log.info(String.format("%,d spent transaction outputs deleted", txPurged));
+        //
+        // Compact the databases
+        //
+        log.info("Compacting LevelDB databases");
+        synchronized(lock) {
+            ((JniDB)dbBlockChain).compactRange(null, null);
+            ((JniDB)dbBlocks).compactRange(null, null);
+            ((JniDB)dbChild).compactRange(null, null);
+            ((JniDB)dbTxOutputs).compactRange(null, null);
+            ((JniDB)dbTxSpent).compactRange(null, null);
+            ((JniDB)dbAlert).compactRange(null, null);
+        }
+        log.info("Finished compacting LevelDB databases");
     }
 
     /**
@@ -1025,7 +1067,9 @@ public class BlockStoreLdb extends BlockStore {
                             int maxIndex = tx.getOutputs().size();
                             for (int i=0; i<maxIndex; i++) {
                                 txID = new TransactionID(txHash, i);
-                                dbTxOutputs.delete(txID.getBytes());
+                                byte[] idBytes = txID.getBytes();
+                                dbTxSpent.delete(idBytes);
+                                dbTxOutputs.delete(idBytes);
                             }
                             //
                             // Update spent outputs to indicate they have not been spent.  We
@@ -1041,13 +1085,15 @@ public class BlockStoreLdb extends BlockStore {
                             for (TransactionInput txInput : txInputs) {
                                 OutPoint op = txInput.getOutPoint();
                                 txID = new TransactionID(op.getHash(), op.getIndex());
-                                entryData = dbTxOutputs.get(txID.getBytes());
+                                byte[] idBytes = txID.getBytes();
+                                entryData = dbTxOutputs.get(idBytes);
                                 if (entryData == null)
                                     continue;
                                 txEntry = new TransactionEntry(entryData);
                                 txEntry.setTimeSpent(0);
                                 txEntry.setBlockHeight(0);
-                                dbTxOutputs.put(txID.getBytes(), txEntry.getBytes());
+                                dbTxOutputs.put(idBytes, txEntry.getBytes());
+                                dbTxSpent.delete(idBytes);
                             }
                         }
                         //
@@ -1164,9 +1210,11 @@ public class BlockStoreLdb extends BlockStore {
                     Iterator<Entry<TransactionID, TransactionEntry>> it = updates.iterator();
                     while (it.hasNext()) {
                         Entry<TransactionID, TransactionEntry> entry = it.next();
-                        txID = entry.getKey();
+                        byte[] idBytes = entry.getKey().getBytes();
                         txEntry = entry.getValue();
-                        dbTxOutputs.put(txID.getBytes(), txEntry.getBytes());
+                        dbTxOutputs.put(idBytes, txEntry.getBytes());
+                        if (txEntry.getTimeSpent() != 0)
+                            dbTxSpent.put(idBytes, getLongBytes(txEntry.getTimeSpent()));
                     }
                     //
                     // Update the block status in the Blocks database
@@ -1224,6 +1272,40 @@ public class BlockStoreLdb extends BlockStore {
      */
     private int getInteger(byte[] key) {
         return (((int)key[0]&0xff)<<24) | (((int)key[1]&0xff)<<16) | (((int)key[2]&0xff)<<8) | ((int)key[3]&0xff);
+    }
+
+    /**
+     * Get the 8-byte key for a long value.  The key uses big-endian format
+     * since LevelDB uses a byte comparator to sort the keys.  This will result
+     * in the keys being sorted by ascending value.
+     *
+     * @param       longVal         Long value
+     * @return                      8-byte array containing the integer
+     */
+    private byte[] getLongBytes(long longVal) {
+        byte[] longBytes = new byte[8];
+        longBytes[0] = (byte)(longVal>>>56);
+        longBytes[1] = (byte)(longVal>>>48);
+        longBytes[2] = (byte)(longVal>>>40);
+        longBytes[3] = (byte)(longVal>>>32);
+        longBytes[4] = (byte)(longVal>>>24);
+        longBytes[5] = (byte)(longVal>>>16);
+        longBytes[6] = (byte)(longVal>>>8);
+        longBytes[7] = (byte)longVal;
+        return longBytes;
+    }
+
+    /**
+     * Get the long value from the 8-byte key
+     *
+     * @param       key         Key bytes
+     * @return                  Long value
+     */
+    private long getLong(byte[] key) {
+        return (((long)key[0]&0xff)<<56) | (((long)key[1]&0xff)<<48) |
+                                (((long)key[2]&0xff)<<40) | (((long)key[3]&0xff)<<32) |
+                                (((long)key[4]&0xff)<<24) | (((long)key[5]&0xff)<<16) |
+                                (((long)key[6]&0xff)<<8)  |  ((long)key[7]&0xff);
     }
 
     /**

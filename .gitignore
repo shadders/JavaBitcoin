@@ -12,3 +12,5 @@ package/
 *.war
 *.ear
 *.zip
+*.tar
+*.gz

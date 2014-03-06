@@ -21,7 +21,7 @@ The PostgreSQL (9.3 or later) relational database can also be used.  It has a go
 
 Database performance isn't an issue during normal operation, but it is significant when loading the block chain for the first time.  This is primarily caused by the insert/update/delete cycle for the transaction outputs table.  As of February 2014, even with pruned outputs, the transaction outputs table has close to 10 million rows (one row per output).  Even consolidating this to one row per transaction doesn't really make much difference in performance.
 
-A compiled version is available here: https://drive.google.com/folderview?id=0B1312_6UqRHPYjUtbU1hdW9VMW8&usp=sharing.  Download JavaBitcoin-1.2.zip and extract the files to a directory of your choice.  If you are building from the source, the dependent jar files can also be obtained here.
+A compiled version is available here: https://drive.google.com/folderview?id=0B1312_6UqRHPYjUtbU1hdW9VMW8&usp=sharing.  Download the desired archive file and extract the files to a directory of your choice.  If you are building from the source, the dependent jar files can also be obtained here.
 
 
 Build
@@ -43,9 +43,7 @@ Here are the steps for a manual build:
   - Build the jar: jar cmf manifest.mf JavaBitcoin.jar -C classes . -C resources . 
   - Build the documentation: javadoc @doc-list
   - Copy JavaBitcoin.jar and the 'lib' directory to wherever you want to store the executables.
-  - Create a shortcut to start JavaBitcoin using java.exe for a command window or javaw.exe for GUI only.  For example:
-  
-      java.exe -Xmx512m -jar path-to-executables\JavaBitcoin.jar PROD
+  - Create a shortcut to start JavaBitcoin using java.exe for a command window or javaw.exe for GUI only. 
   
   
 Install
@@ -88,7 +86,7 @@ The following command-line arguments are supported:
     Retry a block which is currently held. Specify PROD to use the production database or TEST to use the test database. The block hash is the 64-character hash for the block to be retried.
 	
   - TEST
-    Start the program using the regression test network. Application files are stored in the TestNet folder in the application data directory and the test database is used. At least one peer node must be specified in BitcoinWallet.conf since DNS discovery is not supported for the regression test network.
+    Start the program using the regression test network. Application files are stored in the TestNet folder in the application data directory and the test database is used. At least one peer node must be specified in JavaBitcoin.conf since DNS discovery is not supported for the regression test network.
 	
 The following command-line options can be specified using -Dname=value
 
@@ -96,7 +94,7 @@ The following command-line options can be specified using -Dname=value
     Specifies the application data directory. Application data will be stored in a system-specific directory if this option is omitted:
 	    - Linux: user-home/.JavaBitcoin	
 		- Mac: user-home/Library/Application Support/JavaBitcoin	
-		- Windows: user-home/AppData/Roaming/JavaBitcoin	
+		- Windows: user-home\AppData\Roaming\JavaBitcoin	
 	
   - bitcoin.verify.blocks=n		
     Blocks are normally verified as they are added to the block chain. Block verification can be disabled to improve performance. Specify 1 to enable verification and 0 to disable verification. The default is 1.
@@ -120,7 +118,7 @@ The following configuration options can be specified in JavaBitcoin.conf.  This 
   - maxoutbound=n	
     Specifies the maximum number of outbound connections and defaults to 8.
 	
-  - port=n	
+  - port=n		
 	Specifies the port for receiving inbound connections and defaults to 8333
 	
   - dbtype=type		
@@ -137,7 +135,7 @@ The following configuration options can be specified in JavaBitcoin.conf.  This 
 
 Sample Windows shortcut:
 
-	javaw.exe -Xmx512m -Djava.library.path=\Bitcoin\JavaBitcoin -jar \Bitcoin\JavaBitcoin\JavaBitcoin.jar
+	javaw.exe -Xmx512m -Djava.library.path=\Bitcoin\JavaBitcoin -jar \Bitcoin\JavaBitcoin\JavaBitcoin.jar PROD
 	
 Replace javaw.exe with java.exe if you want to run from a command prompt.  This will allow you to view log messages as they occur.
 
