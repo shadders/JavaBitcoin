@@ -133,41 +133,50 @@ public class BlockChain {
         // The exception contains the hash for the restart block.  We will recursively call
         // ourself to work our way down to the junction block.
         //
-        try {
-            chainList = Parameters.blockStore.getJunction(block.getPrevBlockHash());
-            txMap = new HashMap<>(chainList.size());
-            outputMap = new HashMap<>(chainList.size()*250);
-            for (StoredBlock chainStoredBlock : chainList) {
-                Block chainBlock = chainStoredBlock.getBlock();
-                if (chainBlock != null) {
-                    List<Transaction> txList = chainBlock.getTransactions();
-                    for (Transaction tx : txList)
-                        txMap.put(tx.getHash(), tx);
+        boolean buildChain = true;
+        while (buildChain && !onHold) {
+            try {
+                chainList = Parameters.blockStore.getJunction(block.getPrevBlockHash());
+                txMap = new HashMap<>(chainList.size());
+                outputMap = new HashMap<>(chainList.size()*250);
+                for (StoredBlock chainStoredBlock : chainList) {
+                    Block chainBlock = chainStoredBlock.getBlock();
+                    if (chainBlock != null) {
+                        List<Transaction> txList = chainBlock.getTransactions();
+                        for (Transaction tx : txList)
+                            txMap.put(tx.getHash(), tx);
+                    }
                 }
+                List<Transaction> txList = block.getTransactions();
+                for (Transaction tx : txList)
+                    txMap.put(tx.getHash(), tx);
+                buildChain = false;
+            } catch (ChainTooLongException exc) {
+                Sha256Hash chainHash = exc.getHash();
+                StoredBlock chainStoredBlock = Parameters.blockStore.getStoredBlock(chainHash);
+                chainList = updateBlockChain(chainStoredBlock);
+                if (chainList == null) {
+                    buildChain = false;
+                    onHold = true;
+                }
+            } catch (BlockNotFoundException exc) {
+                onHold = true;
+                PeerRequest request = new PeerRequest(exc.getHash(), Parameters.INV_BLOCK);
+                synchronized(Parameters.lock) {
+                    Parameters.pendingRequests.add(request);
+                }
+                Parameters.networkListener.wakeup();
             }
-            List<Transaction> txList = block.getTransactions();
-            for (Transaction tx : txList)
-                txMap.put(tx.getHash(), tx);
-        } catch (ChainTooLongException exc) {
-            onHold = true;
-            Sha256Hash chainHash = exc.getHash();
-            StoredBlock chainStoredBlock = Parameters.blockStore.getStoredBlock(chainHash);
-            chainList = updateBlockChain(chainStoredBlock);
-        } catch (BlockNotFoundException exc) {
-            onHold = true;
-            PeerRequest request = new PeerRequest(exc.getHash(), Parameters.INV_BLOCK);
-            synchronized(Parameters.lock) {
-                Parameters.pendingRequests.add(request);
-            }
-            Parameters.networkListener.wakeup();
         }
+        if (onHold)
+            return null;
         //
         // The new block must have a target difficulty that is equal to or less than the
         // previous block in the chain (the target difficulty decreases as the work required increases)
         // Blocks were added to the block chain before this test was implemented, so we need to
         // allow old blocks even if they fail this test.
         //
-        if (!onHold && Parameters.blockStore.getChainHeight() >= 150000) {
+        if (Parameters.blockStore.getChainHeight() >= 150000) {
             BigInteger blockDiff = block.getTargetDifficultyAsInteger();
             BigInteger chainDiff;
             Block chainBlock = chainList.get(chainList.size()-1).getBlock();

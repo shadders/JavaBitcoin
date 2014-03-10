@@ -21,7 +21,9 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+
 import java.net.InetAddress;
+
 import java.nio.ByteBuffer;
 
 /**
@@ -99,7 +101,7 @@ public class VersionMessage {
         msgData[70] = (byte)(Parameters.listenPort>>8);
         msgData[71] = (byte)Parameters.listenPort;
         Utils.uint64ToByteArrayLE(NODE_ID, msgData, 72);
-        msgData[80] = (byte)Parameters.SOFTWARE_NAME.length();
+        msgData[80] = (byte)agentName.length();
         for (int i=0; i<agentName.length(); i++)
             msgData[81+i] = (byte)agentName.codePointAt(i);
         int offset = agentName.length()+80+1;
