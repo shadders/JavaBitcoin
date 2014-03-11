@@ -846,7 +846,6 @@ public class NetworkListener implements Runnable {
      */
     private void closeConnection(Peer peer) {
         PeerAddress address = peer.getAddress();
-        SelectionKey key = peer.getKey();
         SocketChannel channel = peer.getChannel();
         try {
             //
@@ -862,6 +861,10 @@ public class NetworkListener implements Runnable {
             peer.setConnected(false);
             synchronized(Parameters.lock) {
                 connections.remove(peer);
+                if (!address.isStatic() && peer.getVersionCount() < 3) {
+                    Parameters.peerAddresses.remove(address);
+                    Parameters.peerMap.remove(address);
+                }
             }
             //
             // Notify listeners that a connection has ended
