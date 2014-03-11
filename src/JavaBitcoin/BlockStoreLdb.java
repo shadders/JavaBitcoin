@@ -20,6 +20,8 @@ import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBException;
 import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
+import org.iq80.leveldb.WriteBatch;
+import org.iq80.leveldb.WriteOptions;
 
 import org.fusesource.leveldbjni.JniDBFactory;
 import org.fusesource.leveldbjni.internal.JniDB;
@@ -869,9 +871,14 @@ public class BlockStoreLdb extends BlockStore {
                         }
                     }
                 }
-                for (int i=0; i<purgeList.size(); i++) {
-                    dbTxSpent.delete(purgeList.get(i));
-                    dbTxOutputs.delete(purgeList.get(i));
+                try (WriteBatch batch = dbTxOutputs.createWriteBatch()) {
+                    for (int i=0; i<purgeList.size(); i++) {
+                        dbTxSpent.delete(purgeList.get(i));
+                        batch.delete(purgeList.get(i));
+                    }
+                    WriteOptions options = new WriteOptions();
+                    options.sync(false);
+                    dbTxOutputs.write(batch, options);
                 }
             } catch (DBException | IOException exc) {
                 log.error("Unable to remove expired transactions", exc);
@@ -1208,13 +1215,18 @@ public class BlockStoreLdb extends BlockStore {
                     //
                     Set<Entry<TransactionID, TransactionEntry>> updates = txUpdates.entrySet();
                     Iterator<Entry<TransactionID, TransactionEntry>> it = updates.iterator();
-                    while (it.hasNext()) {
-                        Entry<TransactionID, TransactionEntry> entry = it.next();
-                        byte[] idBytes = entry.getKey().getBytes();
-                        txEntry = entry.getValue();
-                        dbTxOutputs.put(idBytes, txEntry.getBytes());
-                        if (txEntry.getTimeSpent() != 0)
-                            dbTxSpent.put(idBytes, getLongBytes(txEntry.getTimeSpent()));
+                    try (WriteBatch batch = dbTxOutputs.createWriteBatch()) {
+                        while (it.hasNext()) {
+                            Entry<TransactionID, TransactionEntry> entry = it.next();
+                            byte[] idBytes = entry.getKey().getBytes();
+                            txEntry = entry.getValue();
+                            batch.put(idBytes, txEntry.getBytes());
+                            if (txEntry.getTimeSpent() != 0)
+                                dbTxSpent.put(idBytes, getLongBytes(txEntry.getTimeSpent()));
+                        }
+                        WriteOptions options = new WriteOptions();
+                        options.sync(false);
+                        dbTxOutputs.write(batch, options);
                     }
                     //
                     // Update the block status in the Blocks database
