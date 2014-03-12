@@ -56,7 +56,7 @@ After installing PostgreSQL, you need to create a role and a database for use by
 
 No special installation is required for the LevelDB database.
 
-JavaBitcoin stores its application data in user-home/AppData/Roaming/JavaBitcoin.  You can override this by specifying -Dbitcoin.datadir=data-path on the command line before the -jar option.  The blocks are stored in the Blocks subdirectory.  The LevelDB databases are stored in the LevelDB subdirectory.
+JavaBitcoin stores its application data in the user application data directory.  You can override this by specifying -Dbitcoin.datadir=data-path on the command line before the -jar option.  The blocks are stored in the Blocks subdirectory.  The LevelDB databases are stored in the LevelDB subdirectory.
 
 The first time you start JavaBitcoin, it will create and initialize the tables in the database.  You will also need to resize the GUI to the desired size.  Stop and restart JavaBitcoin and the GUI tables should be resized to match the new window dimensions.
 
@@ -91,8 +91,8 @@ The following command-line arguments are supported:
 The following command-line options can be specified using -Dname=value
 
   - bitcoin.datadir=directory-path	
-    Specifies the application data directory. Application data will be stored in a system-specific directory if this option is omitted:
-	    - Linux: user-home/.JavaBitcoin	
+    Specifies the application data directory. Application data will be stored in a system-specific directory if this option is omitted:		
+	    - Linux: user-home/.JavaBitcoin		
 		- Mac: user-home/Library/Application Support/JavaBitcoin	
 		- Windows: user-home\AppData\Roaming\JavaBitcoin	
 	

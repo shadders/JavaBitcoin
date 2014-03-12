@@ -886,19 +886,6 @@ public class BlockStoreLdb extends BlockStore {
             }
         }
         log.info(String.format("%,d spent transaction outputs deleted", txPurged));
-        //
-        // Compact the databases
-        //
-        log.info("Compacting LevelDB databases");
-        synchronized(lock) {
-            ((JniDB)dbBlockChain).compactRange(null, null);
-            ((JniDB)dbBlocks).compactRange(null, null);
-            ((JniDB)dbChild).compactRange(null, null);
-            ((JniDB)dbTxOutputs).compactRange(null, null);
-            ((JniDB)dbTxSpent).compactRange(null, null);
-            ((JniDB)dbAlert).compactRange(null, null);
-        }
-        log.info("Finished compacting LevelDB databases");
     }
 
     /**
