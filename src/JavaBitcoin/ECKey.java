@@ -138,7 +138,7 @@ public class ECKey {
     /**
      * Verifies a signature
      *
-     * @param       contents            The signed contents
+     * @param       contents            The signed contents or null to use error hash
      * @param       signature           DER-encoded signature
      * @return      TRUE if the signature if valid, FALSE otherwise
      * @throws      ECException         Unable to verify the signature
@@ -162,7 +162,18 @@ public class ECKey {
         //
         // Get the double SHA-256 hash of the signed contents
         //
-        byte[] contentsHash = Utils.doubleDigest(contents);
+        // A null contents will result in a hash with the first byte set to 1 and
+        // all other bytes set to 0.  This is needed to handle a bug in the reference
+        // client where it doesn't check for an error when serializing a transaction
+        // and instead uses the error code as the hash.
+        //
+        byte[] contentsHash;
+        if (contents != null) {
+            contentsHash = Utils.doubleDigest(contents);
+        } else {
+            contentsHash = new byte[32];
+            contentsHash[0] = 0x01;
+        }
         //
         // Verify the signature
         //

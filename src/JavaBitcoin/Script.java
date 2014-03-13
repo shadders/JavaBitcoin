@@ -826,12 +826,20 @@ public class Script {
         //
         // Serialize the transaction and then add the hash type to the end of the data
         //
-        byte[] txData;
-        try (ByteArrayOutputStream outStream = new ByteArrayOutputStream(1024)) {
-            Transaction tx = txInput.getTransaction();
-            tx.serializeForSignature(txInput.getIndex(), hashType, subProgram, outStream);
-            Utils.uint32ToByteStreamLE(hashType, outStream);
-            txData = outStream.toByteArray();
+        // The reference client has a bug for SIGHASH_SINGLE when the input index is
+        // greater than or equal to the number of outputs.  In this case, it doesn't
+        // detect an error and instead uses the error code as the transaction hash.
+        // To handle this, we will set the serialized transaction data to null.  ECKey.verify()
+        // will detect this and use the error hash when verifying the signature.
+        //
+        Transaction tx = txInput.getTransaction();
+        byte[] txData = null;
+        if ((hashType&0x7f) != SIGHASH_SINGLE || txInput.getIndex() < tx.getOutputs().size()) {
+            try (ByteArrayOutputStream outStream = new ByteArrayOutputStream(1024)) {
+                tx.serializeForSignature(txInput.getIndex(), hashType, subProgram, outStream);
+                Utils.uint32ToByteStreamLE(hashType, outStream);
+                txData = outStream.toByteArray();
+            }
         }
         //
         // Use the public keys to verify the signature for the hashed data.  Stop as
