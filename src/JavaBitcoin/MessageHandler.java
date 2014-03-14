@@ -76,8 +76,8 @@ public class MessageHandler implements Runnable {
         } catch (InterruptedException exc) {
             if (!handlerShutdown)
                 log.warn("Message handler interrupted", exc);
-        } catch (Exception exc) {
-            log.error("Exception while processing messages", exc);
+        } catch (Throwable exc) {
+            log.error("Runtime exception while processing messages", exc);
         }
         //
         // Stopping
@@ -113,6 +113,16 @@ public class MessageHandler implements Runnable {
             else
                 cmdOp = 0;
             msg.setCommand(cmdOp);
+            //
+            // Close the connection if the peer starts sending messages before the
+            // handshake has been completed
+            //
+            if (peer.getVersionCount() < 2 && cmdOp != MessageHeader.VERSION_CMD &&
+                                              cmdOp != MessageHeader.VERACK_CMD) {
+                peer.setDisconnect(true);
+                throw new VerificationException("Non-version message before handshake completed",
+                                                Parameters.REJECT_INVALID);
+            }
             //
             // Process the message
             //

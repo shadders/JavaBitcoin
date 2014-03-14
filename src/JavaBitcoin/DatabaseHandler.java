@@ -64,8 +64,8 @@ public class DatabaseHandler implements Runnable {
         } catch (InterruptedException exc) {
             if (!databaseShutdown)
                 log.warn("Database handler interrupted", exc);
-        } catch (Exception exc) {
-            log.error("Exception while processing blocks", exc);
+        } catch (Throwable exc) {
+            log.error("Runtime exception while processing blocks", exc);
         }
         //
         // Stopping

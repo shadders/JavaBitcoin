@@ -246,8 +246,8 @@ public class NetworkListener implements Runnable {
             while (!networkShutdown) {
                 processEvents();
             }
-        } catch (Exception exc) {
-            log.error("Exception while processing network events", exc);
+        } catch (Throwable exc) {
+            log.error("Runtime exception while processing network events", exc);
         }
         //
         // Stopping

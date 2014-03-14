@@ -135,7 +135,7 @@ public class VersionMessage {
         //
         int version = (int)Utils.readUint32LE(bytes, 0);
         if (version < Parameters.MIN_PROTOCOL_VERSION) {
-            msg.getPeer().shouldDisconnect();
+            msg.getPeer().setDisconnect(true);
             throw new VerificationException(String.format("Protocol version %d is not supported", version),
                                             Parameters.REJECT_OBSOLETE);
         }
