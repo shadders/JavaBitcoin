@@ -351,6 +351,7 @@ public class StatusPanel extends JPanel implements AlertListener, ChainListener,
                                                      displayDifficulty));
         peerConnectionsField.setText(String.format("<html><b>Peer connections: %d</b></html>",
                                                    connectionTable.getRowCount()));
+        repaint(SwingUtilities.calculateInnerArea(this, null));
     }
 
     /**

@@ -861,7 +861,7 @@ public class NetworkListener implements Runnable {
             peer.setConnected(false);
             synchronized(Parameters.lock) {
                 connections.remove(peer);
-                if (!address.isStatic() && peer.getVersionCount() < 3) {
+                if (!address.isStatic()) {
                     Parameters.peerAddresses.remove(address);
                     Parameters.peerMap.remove(address);
                 }
