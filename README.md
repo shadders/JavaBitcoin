@@ -79,13 +79,13 @@ The following command-line arguments are supported:
   - LOAD PROD|TEST directory-path start-block	
     Load the block chain from the reference client data directory and create the block database. Specify PROD to load the production database or TEST to load the test database. The default reference client data directory will be used if no directory path is specified. The program will terminate after loading the block chain.
 	
-  - PROD
+  - PROD	
     Start the program using the production network. Application files are stored in the application data directory and the production database is used. DNS discovery will be used to locate peer nodes.
 	
   - RETRY PROD|TEST block-hash	
     Retry a block which is currently held. Specify PROD to use the production database or TEST to use the test database. The block hash is the 64-character hash for the block to be retried.
 	
-  - TEST
+  - TEST	
     Start the program using the regression test network. Application files are stored in the TestNet folder in the application data directory and the test database is used. At least one peer node must be specified in JavaBitcoin.conf since DNS discovery is not supported for the regression test network.
 	
 The following command-line options can be specified using -Dname=value

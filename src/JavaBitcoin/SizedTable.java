@@ -109,7 +109,7 @@ public final class SizedTable extends JTable {
 
                 case ADDRESS:                                       // IP address
                     column.setCellRenderer(new StringRenderer(JLabel.RIGHT));
-                    value = "nnn.nnn.nnn.nnn";
+                    value = "nnnn:nnnn:nnnn:nnnn:nnnn:nnnn:nnnn:nnnn[nnnn]";
                     break;
 
                 case SUBVERSION:                                    // 32 characters
