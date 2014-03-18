@@ -119,7 +119,7 @@ public class MessageHandler implements Runnable {
             //
             if (peer.getVersionCount() < 2 && cmdOp != MessageHeader.VERSION_CMD &&
                                               cmdOp != MessageHeader.VERACK_CMD) {
-                peer.setDisconnect(true);
+                peer.setBanScore(Parameters.MAX_BAN_SCORE);
                 throw new VerificationException("Non-version message before handshake completed",
                                                 Parameters.REJECT_INVALID);
             }
