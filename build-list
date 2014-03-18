@@ -14,7 +14,6 @@ src/JavaBitcoin/BlockStatus.java
 src/JavaBitcoin/BlockStore.java
 src/JavaBitcoin/BlockStoreException.java
 src/JavaBitcoin/BlockStoreLdb.java
-src/JavaBitcoin/BlockStorePg.java
 src/JavaBitcoin/BloomFilter.java
 src/JavaBitcoin/BriefLogFormatter.java
 src/JavaBitcoin/ChainListener.java

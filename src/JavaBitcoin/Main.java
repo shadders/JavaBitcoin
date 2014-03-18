@@ -125,19 +125,6 @@ import javax.swing.*;
  *
  * <tr><td>port=n</td>
  * <td>Specifies the port for receiving inbound connections and defaults to 8333</td></tr>
- *
- * <tr><td>dbtype=type</td>
- * <td>Specify 'leveldb' to use LevelDB for the database or 'postgresql' to use PostgreSQL.
- * The LevelDB database will be used if dbtype is not specified.</td></tr>
- *
- * <tr><td>dbuser=userid</td>
- * <td>Specifies the PostgreSQL database user and defaults to javabtc</td></tr>
- *
- * <tr><td>dbpw=password</td>
- * <td>Specifies the PostgreSQL database password and defaults to btcnode.</td></tr>
- *
- * <tr><td>dbport=n</td>
- * <td>Specifies the PostgreSQL database TCP/IP port and defaults to 5432.</td></tr>
  * </table>
  */
 public class Main {
@@ -189,18 +176,6 @@ public class Main {
 
     /** Maximum number of outbound connections */
     private static int maxOutbound = 8;
-
-    /** Database type */
-    private static String dbType = "leveldb";
-
-    /** PostgreSQL database user */
-    private static String dbUser = "javabtc";
-
-    /** PostgreSQL database password */
-    private static String dbPW = "btcnode";
-
-    /** PostgreSQL server port */
-    private static int dbPort = 5432;
 
     /** Load block chain */
     private static boolean loadBlockChain = false;
@@ -353,31 +328,13 @@ public class Main {
             //
             // Create the block store
             //
-            switch (dbType) {
-                case "postgresql":
-                    blockStore = new BlockStorePg(dataPath, testNetwork?"jtestdb":"javadb",
-                                                  dbUser, dbPW, dbPort);
-                    break;
-                case "leveldb":
-                    blockStore = new BlockStoreLdb(dataPath);
-                    break;
-                default:
-                    throw new IllegalArgumentException(String.format("Unrecognized database type '%s", dbType));
-            }
+            blockStore = new BlockStoreLdb(dataPath);
             Parameters.blockStore = blockStore;
             //
             // Create the block chain
             //
             blockChain = new BlockChain(verifyBlocks);
             Parameters.blockChain = blockChain;
-            //
-            // Load the block chain from disk and then exit.
-            //
-            if (loadBlockChain) {
-                loadBlockChain();
-                blockStore.close();
-                System.exit(0);
-            }
             //
             // Retry a held block and then exit
             //
@@ -397,9 +354,17 @@ public class Main {
                 System.exit(0);
             }
             //
-            // Clean up the database by removing old entries
+            // Compact the database
             //
-            blockStore.cleanupDatabase(false);
+            blockStore.compactDatabase();
+            //
+            // Load the block chain from disk and then exit
+            //
+            if (loadBlockChain) {
+                loadBlockChain();
+                blockStore.close();
+                System.exit(0);
+            }
             //
             // Get the peer addresses
             //
@@ -444,7 +409,7 @@ public class Main {
                     createAndShowGUI();
                 }
             });
-        } catch (Exception exc) {
+        } catch (Throwable exc) {
             log.error("Exception during program initialization", exc);
         }
     }
@@ -641,11 +606,6 @@ public class Main {
                     }
                 }
                 //
-                // Clean up the database by removing expired entries
-                //
-                if (blockTime > 0)
-                    blockStore.cleanupDatabase(true);
-                //
                 // Stop loading blocks if we encountered a problem
                 //
                 if (stopLoad)
@@ -765,18 +725,6 @@ public class Main {
                     case "connect":
                         PeerAddress addr = new PeerAddress(value);
                         addressList.add(addr);
-                        break;
-                    case "dbport":
-                        dbPort = Integer.parseInt(value);
-                        break;
-                    case "dbpw":
-                        dbPW = value;
-                        break;
-                    case "dbtype":
-                        dbType = value.toLowerCase();
-                        break;
-                    case "dbuser":
-                        dbUser = value;
                         break;
                     case "maxconnections":
                         maxConnections = Integer.parseInt(value);

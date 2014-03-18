@@ -841,20 +841,14 @@ public class BlockStoreLdb extends BlockStore {
     }
 
     /**
-     * Cleans up the database tables by transactions that are older
-     * than the age limit and have been completely spent
+     * Deletes spent transaction outputs that are older than the maximum transaction age
      *
-     * @param       forcePurge      Purge entries even if the age limit hasn't been reached
-     * @throws                      BlockStoreException Unable to update the database
+     * @throws      BlockStoreException     Unable to delete spent transaction outputs
      */
     @Override
-    public void cleanupDatabase(boolean forcePurge) throws BlockStoreException {
-        long ageLimit;
-        long txPurged = 0;
-        if (forcePurge)
-            ageLimit = System.currentTimeMillis()/1000 - 24*60*60;
-        else
-            ageLimit = chainTime - MAX_TX_AGE;
+    public void deleteSpentTxOutputs() throws BlockStoreException {
+        long ageLimit = chainTime - MAX_TX_AGE;
+        int txPurged = 0;
         List<byte[]> purgeList = new LinkedList<>();
         synchronized(lock) {
             try {
@@ -882,10 +876,29 @@ public class BlockStoreLdb extends BlockStore {
                     dbTxOutputs.delete(purgeList.get(i), options);
                 }
                 log.info(String.format("%,d spent transaction outputs deleted", txPurged));
+            } catch (DBException | IOException | InterruptedException exc) {
+                log.error("Unable to remove spent transactions", exc);
+                throw new BlockStoreException("Unable to remove spent transactions");
+            } finally {
+                dbTxSpent.resumeCompactions();
+                dbTxOutputs.resumeCompactions();
+            }
+        }
+    }
+
+    /**
+     * Compacts the database tables
+     *
+     * @throws      BlockStoreException     Unable to compact database
+     */
+    @Override
+    public void compactDatabase() throws BlockStoreException {
+        synchronized(lock) {
+            try {
                 //
-                // Compact the databases
+                // Compact the database
                 //
-                log.info("Compacting databases");
+                log.info("Compacting database");
                 ((JniDB)dbBlockChain).compactRange(null, null);
                 ((JniDB)dbBlocks).compactRange(null, null);
                 ((JniDB)dbChild).compactRange(null, null);
@@ -893,12 +906,9 @@ public class BlockStoreLdb extends BlockStore {
                 ((JniDB)dbTxOutputs).compactRange(null, null);
                 ((JniDB)dbAlert).compactRange(null, null);
                 log.info("Finished compacting databases");
-            } catch (DBException | IOException | InterruptedException exc) {
-                log.error("Unable to remove expired transactions", exc);
-                throw new BlockStoreException("Unable to remove expired transactions");
-            } finally {
-                dbTxSpent.resumeCompactions();
-                dbTxOutputs.resumeCompactions();
+            } catch (DBException exc) {
+                log.error("Unable to compact database", exc);
+                throw new BlockStoreException("Unable to compact database");
             }
         }
     }
@@ -1179,7 +1189,6 @@ public class BlockStoreLdb extends BlockStore {
                         //
                         if (tx.isCoinBase())
                             continue;
-                        long currentTime = System.currentTimeMillis()/1000;
                         List<TransactionInput> txInputs = tx.getInputs();
                         for (TransactionInput txInput : txInputs) {
                             OutPoint op = txInput.getOutPoint();
@@ -1198,7 +1207,7 @@ public class BlockStoreLdb extends BlockStore {
                                 txEntry = new TransactionEntry(entryData);
                                 txUpdates.put(txID, txEntry);
                             }
-                            txEntry.setTimeSpent(currentTime);
+                            txEntry.setTimeSpent(block.getTimeStamp());
                             txEntry.setBlockHeight(storedBlock.getHeight());
                         }
                     }

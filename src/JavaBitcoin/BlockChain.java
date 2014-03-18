@@ -314,6 +314,10 @@ public class BlockChain {
                 //
                 for (ChainListener listener : listeners)
                     listener.chainUpdated();
+                //
+                // Delete spent transaction outputs
+                //
+                Parameters.blockStore.deleteSpentTxOutputs();
             } catch (VerificationException exc) {
                 chainList = null;
                 log.info(String.format("Block being held due to verification failure\n  Block %s",

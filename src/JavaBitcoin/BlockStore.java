@@ -282,6 +282,13 @@ public abstract class BlockStore {
     public abstract List<StoredOutput> getTxOutputs(Sha256Hash txHash) throws BlockStoreException;
 
     /**
+     * Deletes spent transaction outputs that are older than the maximum transaction age
+     *
+     * @throws      BlockStoreException     Unable to delete spent transaction outputs
+     */
+    public abstract void deleteSpentTxOutputs() throws BlockStoreException;
+
+    /**
      * Returns the chain list from the block following the start block up to the stop
      * block.  A maximum of 500 blocks will be returned.  The list will start with the
      * genesis block if the start block is not found.
@@ -337,13 +344,11 @@ public abstract class BlockStore {
     public abstract void storeBlock(StoredBlock storedBlock) throws BlockStoreException;
 
     /**
-     * Cleans up the database tables by deleting transaction outputs that are older
-     * than the age limit
+     * Compacts the database tables
      *
-     * @param       forcePurge              Purge entries even if the age limit hasn't been reached
-     * @throws      BlockStoreException     Unable to delete transaction outputs
+     * @throws      BlockStoreException     Unable to compact database
      */
-    public abstract void cleanupDatabase(boolean forcePurge) throws BlockStoreException;
+    public abstract void compactDatabase() throws BlockStoreException;
 
     /**
      * Locates the junction where the chain represented by the specified block joins
