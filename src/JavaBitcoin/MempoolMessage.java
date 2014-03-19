@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 Ronald W Hoffman
+ * Copyright 2013-2014 Ronald W Hoffman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package JavaBitcoin;
 
 import java.io.ByteArrayInputStream;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,14 +37,14 @@ public class MempoolMessage {
     public static void processMempoolMessage(Message msg, ByteArrayInputStream inStream) {
         //
         // Get the list of transaction identifiers in the memory pool (return a maximum
-        // of 5000 entries)
+        // of MAX_INV_ENTRIES)
         //
         List<Sha256Hash> txList;
         synchronized(Parameters.lock) {
             txList = new ArrayList<>(Parameters.txPool.size());
             for (StoredTransaction tx : Parameters.txPool) {
                 txList.add(tx.getHash());
-                if (txList.size() == 5000)
+                if (txList.size() == InventoryMessage.MAX_INV_ENTRIES)
                     break;
             }
         }

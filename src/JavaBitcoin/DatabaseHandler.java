@@ -119,7 +119,9 @@ public class DatabaseHandler implements Runnable {
                 //
                 if (chainList != null) {
                     for (StoredBlock storedBlock : chainList) {
-                        if (storedBlock.getBlock() != null) {
+                        Block chainBlock = storedBlock.getBlock();
+                        if (chainBlock != null) {
+                            updateTxPool(chainBlock);
                             int chainHeight = storedBlock.getHeight();
                             Parameters.networkChainHeight = Math.max(chainHeight, Parameters.networkChainHeight);
                             if (chainHeight >= Parameters.networkChainHeight-3)
@@ -162,6 +164,7 @@ public class DatabaseHandler implements Runnable {
             //
             Parameters.blockChain.updateBlockChain(childStoredBlock);
             if (childStoredBlock.isOnChain()) {
+                updateTxPool(childStoredBlock.getBlock());
                 //
                 // Notify our peers about this block.  To avoid
                 // flooding peers with blocks they have already seen, we won't send an
@@ -178,6 +181,25 @@ public class DatabaseHandler implements Runnable {
             }
         }
         return parentBlock;
+    }
+
+    /**
+     * Remove the transactions in the current block from the memory pool
+     *
+     * @param       block           The current block
+     */
+    private void updateTxPool(Block block) {
+        List<Transaction> txList = block.getTransactions();
+        synchronized(Parameters.lock) {
+            for (Transaction tx : txList) {
+                Sha256Hash txHash = tx.getHash();
+                StoredTransaction storedTx = Parameters.txMap.get(txHash);
+                if (storedTx != null) {
+                    Parameters.txPool.remove(storedTx);
+                    Parameters.txMap.remove(txHash);
+                }
+            }
+        }
     }
 
     /**

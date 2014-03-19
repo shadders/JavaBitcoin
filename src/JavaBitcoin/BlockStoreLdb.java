@@ -670,7 +670,7 @@ public class BlockStoreLdb extends BlockStore {
 
     /**
      * Returns the chain list from the block following the start block up to the stop
-     * block.  A maximum of 500 blocks will be returned.
+     * block.  A maximum of MAX_INV_ENTRIES blocks will be returned.
      *
      * @param       startHeight         Start block height
      * @param       stopBlock           Stop block
@@ -689,7 +689,7 @@ public class BlockStoreLdb extends BlockStore {
                         Entry<byte[], byte[]> dbEntry = it.next();
                         Sha256Hash blockHash = new Sha256Hash(dbEntry.getValue());
                         chainList.add(blockHash);
-                        if (blockHash.equals(stopBlock) || chainList.size() >= 500)
+                        if (blockHash.equals(stopBlock) || chainList.size() >= InventoryMessage.MAX_INV_ENTRIES)
                             break;
                     }
                 }

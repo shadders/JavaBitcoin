@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 Ronald W Hoffman
+ * Copyright 2013-2014 Ronald W Hoffman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -175,7 +175,7 @@ public class GetBlocksMessage {
             // Get the chain list
             //
             List<Sha256Hash> chainList = Parameters.blockStore.getChainList(blockHash, stopHash);
-            if (chainList.size() == 500)
+            if (chainList.size() >= InventoryMessage.MAX_INV_ENTRIES)
                 peer.setIncomplete(true);
             //
             // Build the 'inv' response

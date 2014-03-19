@@ -152,7 +152,7 @@ public class StatusPanel extends JPanel implements AlertListener, ChainListener,
             tableHeight = frameHeight/8;
             rowHeight = alertTable.getRowHeight();
             tableHeight = (tableHeight/rowHeight)*rowHeight;
-            alertTable.setPreferredScrollableViewportSize(new Dimension(frameWidth-60, tableHeight));
+            alertTable.setPreferredScrollableViewportSize(new Dimension(frameWidth-70, tableHeight));
             alertScrollPane = new JScrollPane(alertTable);
             tablePane.add(Box.createGlue());
             tablePane.add(new JLabel("<html><h3>Alerts</h3></html>"));
@@ -170,7 +170,7 @@ public class StatusPanel extends JPanel implements AlertListener, ChainListener,
         tableHeight = frameHeight/5;
         rowHeight = connectionTable.getRowHeight();
         tableHeight = (tableHeight/rowHeight)*rowHeight;
-        connectionTable.setPreferredScrollableViewportSize(new Dimension(frameWidth-60, tableHeight));
+        connectionTable.setPreferredScrollableViewportSize(new Dimension(frameWidth-70, tableHeight));
         connectionScrollPane = new JScrollPane(connectionTable);
         tablePane.add(Box.createGlue());
         tablePane.add(new JLabel("<html><h3>Connections</h3></html>"));
@@ -186,7 +186,7 @@ public class StatusPanel extends JPanel implements AlertListener, ChainListener,
             tableHeight = frameHeight/4;
             rowHeight = blockTable.getRowHeight();
             tableHeight = (tableHeight/rowHeight)*rowHeight;
-            blockTable.setPreferredScrollableViewportSize(new Dimension(frameWidth-60, tableHeight));
+            blockTable.setPreferredScrollableViewportSize(new Dimension(frameWidth-70, tableHeight));
             blockScrollPane = new JScrollPane(blockTable);
             tablePane.add(Box.createGlue());
             tablePane.add(new JLabel("<html><h3>Recent Blocks</h3></html>"));

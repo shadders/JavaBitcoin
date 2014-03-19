@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 Ronald W Hoffman
+ * Copyright 2013-2014 Ronald W Hoffman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,8 +96,8 @@ public class GetDataMessage {
         // Get the number of inventory entries
         //
         int varCount = new VarInt(inStream).toInt();
-        if (varCount < 0 || varCount > 50000)
-            throw new VerificationException("More than 50,000 inventory entries in 'getdata' message");
+        if (varCount < 0 || varCount > 1000)
+            throw new VerificationException("More than 1000 inventory entries in 'getdata' message");
         //
         // Process each request
         //

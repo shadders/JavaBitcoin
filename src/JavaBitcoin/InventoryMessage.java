@@ -48,6 +48,9 @@ import java.util.List;
  */
 public class InventoryMessage {
 
+    /** Maximum number of inventory entries */
+    public static final int MAX_INV_ENTRIES = 500;
+
     /** Garbage transactions that keep getting re-broadcast */
     private static final List<Sha256Hash> badTransactions = new ArrayList<>(10);
     static {
@@ -63,6 +66,8 @@ public class InventoryMessage {
      * @return                      Message to send to the peer
      */
     public static Message buildInventoryMessage(Peer peer, int type, List<Sha256Hash> hashList) {
+        if (hashList.size() > MAX_INV_ENTRIES)
+            throw new IllegalArgumentException("Inventory count is too large");
         byte[] varCount = VarInt.encode(hashList.size());
         byte[] msgData = new byte[hashList.size()*36+varCount.length];
         //
