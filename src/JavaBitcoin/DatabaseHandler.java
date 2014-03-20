@@ -60,6 +60,7 @@ public class DatabaseHandler implements Runnable {
             while (!databaseShutdown) {
                 Block block = Parameters.databaseQueue.take();
                 processBlock(block);
+                System.gc();
             }
         } catch (InterruptedException exc) {
             if (!databaseShutdown)

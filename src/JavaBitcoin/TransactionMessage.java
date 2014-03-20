@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 Ronald W Hoffman
+ * Copyright 2013-2014 Ronald W Hoffman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -356,9 +356,9 @@ public class TransactionMessage {
                                                 Parameters.REJECT_INSUFFICIENT_FEE, txHash);
         }
         //
-        // Store the transaction in the memory pool (maximum size we will store is 100KB)
+        // Store the transaction in the memory pool (maximum size we will store is 50KB)
         //
-        if (txLength <= 100*1024) {
+        if (txLength <= 50*1024) {
             StoredTransaction storedTx = new StoredTransaction(tx);
             synchronized(Parameters.lock) {
                 if (Parameters.txMap.get(txHash) == null) {

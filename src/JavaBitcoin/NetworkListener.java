@@ -560,6 +560,7 @@ public class NetworkListener implements Runnable {
             if (channel != null) {
                 InetSocketAddress remoteAddress = (InetSocketAddress)channel.getRemoteAddress();
                 PeerAddress address = new PeerAddress(remoteAddress);
+                address.setTimeConnected(System.currentTimeMillis()/1000);
                 if (connections.size() >= maxConnections) {
                     channel.close();
                     log.info(String.format("Max connections reached: Connection rejected from %s",
@@ -655,6 +656,7 @@ public class NetworkListener implements Runnable {
         try {
             channel.finishConnect();
             log.info(String.format("Connection established to %s", address.toString()));
+            address.setTimeConnected(System.currentTimeMillis()/1000);
             Message msg = VersionMessage.buildVersionMessage(peer, Parameters.blockStore.getChainHeight());
             synchronized(Parameters.lock) {
                 peer.getOutputList().add(msg);
@@ -879,6 +881,14 @@ public class NetworkListener implements Runnable {
             if (channel.isOpen())
                 channel.close();
             log.info(String.format("Connection closed with peer %s", address.toString()));
+            //
+            // Ban nuisance peers
+            //
+            if (address.getTimeConnected() > System.currentTimeMillis()/1000-5) {
+                bannedAddresses.add(address.getAddress());
+                log.info(String.format("Nuisance peer address %s banned",
+                                       address.getAddress().getHostAddress()));
+            }
         } catch (IOException exc) {
             log.error(String.format("Error while closing socket channel with %s", address.toString()), exc);
         }

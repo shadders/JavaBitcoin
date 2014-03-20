@@ -56,6 +56,9 @@ public class PeerAddress {
     /** Peer connected */
     private boolean connected;
 
+    /** Time peer connected */
+    private long timeConnected;
+
     /** Outbound connection */
     private boolean outboundConnection;
 
@@ -299,6 +302,24 @@ public class PeerAddress {
      */
     public void setConnected(boolean isConnected) {
         connected = isConnected;
+    }
+
+    /**
+     * Returns the time the peer connected to us
+     *
+     * @return                      Time connected
+     */
+    public long getTimeConnected() {
+        return timeConnected;
+    }
+
+    /**
+     * Sets the time the peer connected to us
+     *
+     * @param       timeConnected   Time the peer connected (seconds since the epoch)
+     */
+    public void setTimeConnected(long timeConnected) {
+        this.timeConnected = timeConnected;
     }
 
     /**
