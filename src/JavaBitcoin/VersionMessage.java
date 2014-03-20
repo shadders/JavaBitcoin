@@ -134,11 +134,9 @@ public class VersionMessage {
         // Validate the protocol level
         //
         int version = (int)Utils.readUint32LE(bytes, 0);
-        if (version < Parameters.MIN_PROTOCOL_VERSION) {
-            msg.getPeer().setDisconnect(true);
+        if (version < Parameters.MIN_PROTOCOL_VERSION)
             throw new VerificationException(String.format("Protocol version %d is not supported", version),
                                             Parameters.REJECT_OBSOLETE);
-        }
         peer.setVersion(version);
         //
         // Get the peer services
@@ -193,6 +191,8 @@ public class VersionMessage {
         if (count < 4)
             throw new EOFException("'version' message is too short");
         peer.setHeight((int)Utils.readUint32LE(bytes, 0));
+        if (peer.getHeight() < 0)
+            throw new VerificationException("Invalid chain height in 'version' message", Parameters.REJECT_INVALID);
         //
         // Get the transaction relay mode (this is an optional field and is TRUE if omitted)
         // We will always relay blocks.

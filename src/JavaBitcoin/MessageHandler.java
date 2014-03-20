@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 Ronald W Hoffman
+ * Copyright 2013-2014 Ronald W Hoffman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+
 import java.nio.ByteBuffer;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -91,13 +93,12 @@ public class MessageHandler implements Runnable {
      * @param       msg             Message
      */
     private void processMessage(Message msg) throws InterruptedException {
-        Peer peer = null;
-        PeerAddress address = null;
-        String cmd = null;
+        Peer peer = msg.getPeer();
+        PeerAddress address = peer.getAddress();
+        String cmd = "N/A";
+        int cmdOp = 0;
         int reasonCode = 0;
         try {
-            peer = msg.getPeer();
-            address = peer.getAddress();
             ByteBuffer msgBuffer = msg.getBuffer();
             byte[] msgBytes = msgBuffer.array();
             ByteArrayInputStream inStream = new ByteArrayInputStream(msgBytes);
@@ -107,11 +108,8 @@ public class MessageHandler implements Runnable {
             //
             cmd = MessageHeader.processMessage(inStream, msgBytes);
             Integer cmdLookup = MessageHeader.cmdMap.get(cmd);
-            int cmdOp;
             if (cmdLookup != null)
                 cmdOp = cmdLookup.intValue();
-            else
-                cmdOp = 0;
             msg.setCommand(cmdOp);
             //
             // Close the connection if the peer starts sending messages before the
@@ -317,11 +315,12 @@ public class MessageHandler implements Runnable {
             }
         } catch (IOException exc) {
             log.error(String.format("I/O error while processing '%s' message from %s",
-                                    cmd!=null ? cmd : "N/A",
-                                    address.toString()), exc);
+                                    cmd, address.toString()), exc);
             reasonCode = Parameters.REJECT_MALFORMED;
-            if (msg.getCommand() == MessageHeader.TX_CMD)
+            if (cmdOp == MessageHeader.TX_CMD)
                 Parameters.txRejected++;
+            else if (cmdOp == MessageHeader.VERSION_CMD)
+                peer.setDisconnect(true);
             if (peer.getVersion() >= 70002) {
                 Message rejectMsg = RejectMessage.buildRejectMessage(peer, cmd, reasonCode, exc.getMessage());
                 msg.setBuffer(rejectMsg.getBuffer());
@@ -329,11 +328,12 @@ public class MessageHandler implements Runnable {
             }
         } catch (VerificationException exc) {
             log.error(String.format("Message verification failed for '%s' message from %s\n  %s\n  %s",
-                                    cmd!=null ? cmd : "N/A",
-                                    address.toString(), exc.getMessage(), exc.getHash().toString()));
+                                    cmd, address.toString(), exc.getMessage(), exc.getHash().toString()));
             reasonCode = exc.getReason();
-            if (msg.getCommand() == MessageHeader.TX_CMD)
+            if (cmdOp == MessageHeader.TX_CMD)
                 Parameters.txRejected++;
+            else if (cmdOp == MessageHeader.VERSION_CMD)
+                peer.setDisconnect(true);
             if (peer.getVersion() >= 70002) {
                 Message rejectMsg = RejectMessage.buildRejectMessage(peer, cmd, reasonCode,
                                                                      exc.getMessage(), exc.getHash());
