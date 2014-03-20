@@ -856,8 +856,6 @@ public class BlockStoreLdb extends BlockStore {
                 // Delete spent transaction outputs
                 //
                 log.info("Deleting spent transaction outputs");
-                dbTxSpent.suspendCompactions();
-                dbTxOutputs.suspendCompactions();
                 try (DBIterator it = dbTxSpent.iterator()) {
                     it.seekToFirst();
                     while (it.hasNext()) {
@@ -876,12 +874,9 @@ public class BlockStoreLdb extends BlockStore {
                     dbTxOutputs.delete(purgeList.get(i), options);
                 }
                 log.info(String.format("%,d spent transaction outputs deleted", txPurged));
-            } catch (DBException | IOException | InterruptedException exc) {
+            } catch (DBException | IOException exc) {
                 log.error("Unable to remove spent transactions", exc);
                 throw new BlockStoreException("Unable to remove spent transactions");
-            } finally {
-                dbTxSpent.resumeCompactions();
-                dbTxOutputs.resumeCompactions();
             }
         }
     }
