@@ -40,24 +40,10 @@ public class MessageHandler implements Runnable {
     /** Logger instance */
     private static final Logger log = LoggerFactory.getLogger(MessageHandler.class);
 
-    /** Message handler thread */
-    private Thread handlerThread;
-
-    /** Message handler shutdown */
-    private boolean handlerShutdown = false;
-
     /**
      * Creates a message handler
      */
     public MessageHandler() {
-    }
-
-    /**
-     * Shuts down the message handler
-     */
-    public void shutdown() {
-        handlerShutdown = true;
-        handlerThread.interrupt();
     }
 
     /**
@@ -66,18 +52,18 @@ public class MessageHandler implements Runnable {
     @Override
     public void run() {
         log.info("Message handler started");
-        handlerThread = Thread.currentThread();
         //
         // Process messages until we are shutdown
         //
         try {
-            while (!handlerShutdown) {
+            while (true) {
                 Message msg = Parameters.messageQueue.take();
+                if (msg instanceof ShutdownMessage)
+                    break;
                 processMessage(msg);
             }
         } catch (InterruptedException exc) {
-            if (!handlerShutdown)
-                log.warn("Message handler interrupted", exc);
+            log.warn("Message handler interrupted", exc);
         } catch (Throwable exc) {
             log.error("Runtime exception while processing messages", exc);
         }

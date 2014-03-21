@@ -462,8 +462,8 @@ public class Main {
         // Stop the network
         //
         Parameters.networkListener.shutdown();
-        databaseHandler.shutdown();
-        messageHandler.shutdown();
+        Parameters.databaseQueue.add(new ShutdownDatabase());
+        Parameters.messageQueue.add(new ShutdownMessage());
         //
         // Wait for threads to terminate
         //

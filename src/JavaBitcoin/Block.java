@@ -1,6 +1,6 @@
 /**
  * Copyright 2011 Google Inc.
- * Copyright 2013 Ronald W Hoffman
+ * Copyright 2013-2014 Ronald W Hoffman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
 import java.io.IOException;
+
 import java.math.BigInteger;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -96,6 +98,12 @@ public class Block {
 
     /** The transactions contained in the block */
     private List<Transaction> transactions;
+
+    /**
+     * Creates an empty block for use by subclasses
+     */
+    protected Block() {
+    }
 
     /**
      * Creates a block from a serialized byte array.  The serialized data starts with the block header.

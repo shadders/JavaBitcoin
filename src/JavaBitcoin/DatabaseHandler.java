@@ -34,12 +34,6 @@ public class DatabaseHandler implements Runnable {
     /** Logger instance */
     private static final Logger log = LoggerFactory.getLogger(DatabaseHandler.class);
 
-    /** Database handler thread */
-    private Thread databaseThread;
-
-    /** Database shutdown */
-    private boolean databaseShutdown = false;
-
     /**
      * Creates the database listener
      */
@@ -52,19 +46,19 @@ public class DatabaseHandler implements Runnable {
     @Override
     public void run() {
         log.info("Database handler started");
-        databaseThread = Thread.currentThread();
         //
         // Process blocks until the shutdown() method is called
         //
         try {
-            while (!databaseShutdown) {
+            while (true) {
                 Block block = Parameters.databaseQueue.take();
+                if (block instanceof ShutdownDatabase)
+                    break;
                 processBlock(block);
                 System.gc();
             }
         } catch (InterruptedException exc) {
-            if (!databaseShutdown)
-                log.warn("Database handler interrupted", exc);
+            log.warn("Database handler interrupted", exc);
         } catch (Throwable exc) {
             log.error("Runtime exception while processing blocks", exc);
         }
@@ -72,14 +66,6 @@ public class DatabaseHandler implements Runnable {
         // Stopping
         //
         log.info("Database handler stopped");
-    }
-
-    /**
-     * Shuts down the database listener
-     */
-    public void shutdown() {
-        databaseShutdown = true;
-        databaseThread.interrupt();
     }
 
     /**
@@ -145,7 +131,6 @@ public class DatabaseHandler implements Runnable {
         } catch (BlockStoreException exc) {
             log.error(String.format("Unable to store block in database\n  %s",
                                     block.getHashAsString()), exc);
-            databaseShutdown = true;
         }
     }
 
