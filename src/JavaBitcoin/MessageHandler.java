@@ -195,20 +195,23 @@ public class MessageHandler implements Runnable {
                     // The 'getdata' command sends data in batches, so we need
                     // to check if it needs to be restarted.  If it does, we will
                     // reset the message buffer so that it will be processed again
-                    // when the request is restarted.
+                    // when the request is restarted.  We will discard an incomplete
+                    // request if the node sends a new 'getdata' command.  This avoids
+                    // a problem with the reference client which repeats data requests
+                    // if the data isn't returned fast enough.
                     //
                     if (msg.getRestartIndex() != 0) {
                         msgBuffer.rewind();
                         msg.setRestartBuffer(msgBuffer);
                         synchronized(Parameters.lock) {
-                            peer.getDeferredList().add(msg);
+                            peer.setDeferredMessage(msg);
                         }
                     }
                     //
                     // Send an 'inv' message for the current chain head to restart
                     // the peer download if the previous 'getblocks' was incomplete.
                     //
-                    if (peer.isIncomplete() && msg.getBuffer() == null) {
+                    if (peer.isIncomplete() && msg.getBuffer() == null && peer.getDeferredMessage() == null) {
                         peer.setIncomplete(false);
                         Sha256Hash chainHead = Parameters.blockStore.getChainHead();
                         List<Sha256Hash> blockList = new ArrayList<>(1);

@@ -1,5 +1,5 @@
 /**
- * Copyright 2013 Ronald W Hoffman
+ * Copyright 2013-2014 Ronald W Hoffman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package JavaBitcoin;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+
 import java.util.LinkedList;
 import java.util.List;
 
@@ -55,8 +56,8 @@ public class Peer {
     /** Current output buffer */
     private ByteBuffer outputBuffer;
 
-    /** Deferred data requests */
-    private final List<Message> deferredList = new LinkedList<>();
+    /** Deferred message */
+    private Message deferredMessage;
 
     /** Disconnect peer */
     private boolean disconnectPeer;
@@ -182,7 +183,7 @@ public class Peer {
     /**
      * Returns the current output buffer
      *
-     * @return      Output buffer
+     * @return      Output buffer or null if there is no buffer
      */
     public ByteBuffer getOutputBuffer() {
         return outputBuffer;
@@ -198,12 +199,21 @@ public class Peer {
     }
 
     /**
-     * Returns the deferred request list
+     * Returns the deferred message
      *
-     * @return      Deferred request list
+     * @return      Deferred message or null if there is no message
      */
-    public List<Message> getDeferredList() {
-        return deferredList;
+    public Message getDeferredMessage() {
+        return deferredMessage;
+    }
+
+    /**
+     * Sets the deferred message
+     *
+     * @param       deferredMessage     The deferred message
+     */
+    public void setDeferredMessage(Message deferredMessage) {
+        this.deferredMessage = deferredMessage;
     }
 
     /**

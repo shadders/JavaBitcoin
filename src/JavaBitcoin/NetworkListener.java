@@ -820,10 +820,11 @@ public class NetworkListener implements Runnable {
             //
             if (peer.getOutputBuffer() == null) {
                 synchronized(Parameters.lock) {
-                    List<Message> deferredList = peer.getDeferredList();
-                    if (!deferredList.isEmpty()) {
-                        Message deferredMsg = deferredList.remove(0);
+                    Message deferredMsg = peer.getDeferredMessage();
+                    if (deferredMsg != null) {
+                        peer.setDeferredMessage(null);
                         deferredMsg.setBuffer(deferredMsg.getRestartBuffer());
+                        deferredMsg.setRestartBuffer(null);
                         Parameters.messageQueue.put(deferredMsg);
                         int count = peer.getInputCount() + 1;
                         peer.setInputCount(count);
@@ -855,6 +856,7 @@ public class NetworkListener implements Runnable {
             //
             peer.setInputBuffer(null);
             peer.setOutputBuffer(null);
+            peer.setDeferredMessage(null);
             peer.getOutputList().clear();
             if (address.isOutbound())
                 outboundCount--;

@@ -18,7 +18,9 @@ package JavaBitcoin;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+
 import java.nio.ByteBuffer;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -112,9 +114,9 @@ public class GetDataMessage {
             inStream.skip(restart*36);
         for (int i=restart; i<varCount; i++) {
             //
-            // Defer the request if we have sent 50 blocks in the current batch
+            // Defer the request if we have sent 25 blocks in the current batch
             //
-            if (blocksSent == 50) {
+            if (blocksSent == 25) {
                 msg.setRestartIndex(i);
                 break;
             }
