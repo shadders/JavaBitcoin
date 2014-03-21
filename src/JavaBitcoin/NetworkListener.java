@@ -884,7 +884,9 @@ public class NetworkListener implements Runnable {
             //
             // Ban nuisance peers
             //
-            if (address.getTimeConnected() > System.currentTimeMillis()/1000-5) {
+            if (address.getTimeConnected() > System.currentTimeMillis()/1000-5 &&
+                                    !address.isOutbound() &&
+                                    !bannedAddresses.contains(address.getAddress())) {
                 bannedAddresses.add(address.getAddress());
                 log.info(String.format("Nuisance peer address %s banned",
                                        address.getAddress().getHostAddress()));
@@ -916,7 +918,8 @@ public class NetworkListener implements Runnable {
             //
             if (peer.shouldDisconnect()) {
                 closeConnection(peer);
-                if (peer.getBanScore() >= Parameters.MAX_BAN_SCORE) {
+                if (peer.getBanScore() >= Parameters.MAX_BAN_SCORE &&
+                                !bannedAddresses.contains(peer.getAddress().getAddress())) {
                     bannedAddresses.add(peer.getAddress().getAddress());
                     log.info(String.format("Peer address %s banned",
                                            peer.getAddress().getAddress().getHostAddress()));
